@@ -5,6 +5,22 @@ app_description = "Deterministic, AI-operable synthetic scenario data generation
 app_email = "agatho_daemon@icloud.com"
 app_license = "gpl-3.0"
 
+# Scenario providers
+# ------------------
+# Providers are discovered through this hook, so any app may contribute one
+# without this app knowing about it. Order here is irrelevant: execution order
+# comes from the declared capability dependencies.
+scenario_providers = [
+	"frappe_scenario.providers.frappe_settings.FrappeFoundationProvider",
+	"frappe_scenario.providers.erpnext_foundation.ErpnextFoundationProvider",
+	"frappe_scenario.providers.erpnext_parties.ErpnextPartiesProvider",
+	"frappe_scenario.providers.erpnext_catalog.ErpnextCatalogProvider",
+	"frappe_scenario.providers.erpnext_opening.ErpnextOpeningProvider",
+	"frappe_scenario.providers.erpnext_buying.ErpnextBuyingProvider",
+	"frappe_scenario.providers.erpnext_selling.ErpnextSellingProvider",
+	"frappe_scenario.providers.erpnext_payments.ErpnextPaymentsProvider",
+]
+
 # Apps
 # ------------------
 
@@ -246,4 +262,3 @@ app_license = "gpl-3.0"
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
-

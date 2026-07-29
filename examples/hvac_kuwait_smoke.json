@@ -1,0 +1,11 @@
+{
+	"schema_version": "1.0",
+	"title": "HVAC Distribution Kuwait Smoke",
+	"scenario": {
+		"archetype": "hvac_distribution",
+		"country": "Kuwait",
+		"scale": "smoke",
+		"seed": 7,
+		"anchor_date": "2026-01-31"
+	}
+}

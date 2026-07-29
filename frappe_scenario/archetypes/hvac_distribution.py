@@ -1,0 +1,271 @@
+# Copyright (c) 2026, Agathodaemon and contributors
+# For license information, please see license.txt
+"""HVAC equipment distribution and service archetype.
+
+Modelled on a wholesale distributor that sells cooling equipment, controls, and
+consumables to contractors and retail walk-in customers, and also performs
+installation, preventive maintenance, and repair work.
+
+Commercial shape encoded here:
+
+* thin margins on equipment, wider margins on spares and services;
+* demand peaking through the hot months;
+* lead times that lengthen with equipment size;
+* contractor customers on credit terms, retail customers paying cash.
+
+Every band below is exposed to the specification as ``catalog.family_margin_overrides``
+and friends, so a scenario can move them without editing provider code.
+"""
+
+from __future__ import annotations
+
+from frappe_scenario.archetypes.base import Archetype, ItemFamily
+
+ITEM_GROUPS = [
+	"HVAC Equipment",
+	"HVAC Controls",
+	"HVAC Accessories",
+	"HVAC Consumables",
+	"HVAC Spare Parts",
+	"HVAC Services",
+]
+
+FAMILIES = [
+	ItemFamily(
+		key="split_air_conditioners",
+		title="Split Air Conditioners",
+		kind="equipment",
+		item_group="HVAC Equipment",
+		uom="Nos",
+		cost_range=(90.0, 450.0),
+		margin_range=(0.12, 0.22),
+		lead_time_days=(30, 60),
+		catalog_weight=3.0,
+		demand_weight=4.0,
+		quantity_range=(1, 12),
+		descriptors=("Wall Mounted", "Floor Standing", "Ceiling Cassette", "Ducted", "Inverter"),
+	),
+	ItemFamily(
+		key="package_units",
+		title="Package Units",
+		kind="equipment",
+		item_group="HVAC Equipment",
+		uom="Nos",
+		cost_range=(700.0, 2500.0),
+		margin_range=(0.10, 0.18),
+		lead_time_days=(45, 90),
+		catalog_weight=1.5,
+		demand_weight=1.5,
+		quantity_range=(1, 4),
+		descriptors=("Rooftop", "Skid Mounted", "Horizontal", "Vertical"),
+	),
+	ItemFamily(
+		key="chillers",
+		title="Chillers",
+		kind="equipment",
+		item_group="HVAC Equipment",
+		uom="Nos",
+		cost_range=(6000.0, 40000.0),
+		margin_range=(0.08, 0.15),
+		lead_time_days=(60, 120),
+		catalog_weight=0.6,
+		demand_weight=0.4,
+		quantity_range=(1, 2),
+		descriptors=("Air Cooled Screw", "Water Cooled Centrifugal", "Scroll", "Magnetic Bearing"),
+	),
+	ItemFamily(
+		key="compressors",
+		title="Compressors",
+		kind="equipment",
+		item_group="HVAC Equipment",
+		uom="Nos",
+		cost_range=(250.0, 1800.0),
+		margin_range=(0.14, 0.24),
+		lead_time_days=(30, 75),
+		catalog_weight=1.2,
+		demand_weight=1.2,
+		quantity_range=(1, 6),
+		descriptors=("Rotary", "Scroll", "Reciprocating", "Screw"),
+	),
+	ItemFamily(
+		key="fan_coil_units",
+		title="Fan Coil Units",
+		kind="equipment",
+		item_group="HVAC Equipment",
+		uom="Nos",
+		cost_range=(120.0, 600.0),
+		margin_range=(0.14, 0.24),
+		lead_time_days=(30, 60),
+		catalog_weight=1.5,
+		demand_weight=2.0,
+		quantity_range=(2, 20),
+		descriptors=("Concealed", "Exposed", "Cassette", "High Static"),
+	),
+	ItemFamily(
+		key="thermostats_and_controls",
+		title="Thermostats and Controls",
+		kind="controls",
+		item_group="HVAC Controls",
+		uom="Nos",
+		cost_range=(15.0, 180.0),
+		margin_range=(0.25, 0.38),
+		lead_time_days=(14, 30),
+		catalog_weight=2.0,
+		demand_weight=2.5,
+		quantity_range=(2, 40),
+		descriptors=("Digital", "Programmable", "Wireless", "BMS Interface", "Zone Controller"),
+	),
+	ItemFamily(
+		key="copper_pipes_and_fittings",
+		title="Copper Pipes and Fittings",
+		kind="accessory",
+		item_group="HVAC Accessories",
+		uom="Meter",
+		cost_range=(5.0, 60.0),
+		margin_range=(0.26, 0.40),
+		lead_time_days=(10, 25),
+		catalog_weight=2.0,
+		demand_weight=3.0,
+		quantity_range=(10, 200),
+		descriptors=("Soft Coil", "Hard Drawn", "Insulated Pair", "Elbow", "Reducer"),
+	),
+	ItemFamily(
+		key="refrigerant_and_consumables",
+		title="Refrigerant and Consumables",
+		kind="consumable",
+		item_group="HVAC Consumables",
+		uom="Kg",
+		cost_range=(8.0, 90.0),
+		margin_range=(0.30, 0.45),
+		lead_time_days=(7, 20),
+		catalog_weight=1.5,
+		demand_weight=2.5,
+		quantity_range=(5, 60),
+		descriptors=("R32", "R410A", "R134a", "Compressor Oil", "Brazing Rod"),
+	),
+	ItemFamily(
+		key="filters",
+		title="Filters",
+		kind="consumable",
+		item_group="HVAC Consumables",
+		uom="Nos",
+		cost_range=(3.0, 40.0),
+		margin_range=(0.32, 0.48),
+		lead_time_days=(7, 18),
+		catalog_weight=1.5,
+		demand_weight=2.5,
+		quantity_range=(10, 120),
+		descriptors=("Washable", "Pleated", "HEPA", "Carbon", "Pre-Filter"),
+	),
+	ItemFamily(
+		key="electrical_accessories",
+		title="Electrical Accessories",
+		kind="accessory",
+		item_group="HVAC Accessories",
+		uom="Nos",
+		cost_range=(2.0, 45.0),
+		margin_range=(0.28, 0.42),
+		lead_time_days=(7, 21),
+		catalog_weight=1.8,
+		demand_weight=2.0,
+		quantity_range=(5, 80),
+		descriptors=("Contactor", "Capacitor", "Relay", "Cable Gland", "Isolator"),
+	),
+	ItemFamily(
+		key="spare_parts",
+		title="Spare Parts",
+		kind="spare",
+		item_group="HVAC Spare Parts",
+		uom="Nos",
+		cost_range=(4.0, 250.0),
+		margin_range=(0.40, 0.60),
+		lead_time_days=(10, 30),
+		catalog_weight=2.5,
+		demand_weight=2.5,
+		quantity_range=(1, 25),
+		descriptors=("Fan Motor", "PCB", "Expansion Valve", "Sensor", "Drain Pump", "Blower Wheel"),
+	),
+	ItemFamily(
+		key="installation_services",
+		title="Installation Services",
+		kind="service",
+		item_group="HVAC Services",
+		uom="Nos",
+		cost_range=(40.0, 400.0),
+		margin_range=(0.45, 0.65),
+		lead_time_days=(0, 0),
+		catalog_weight=0.6,
+		demand_weight=1.5,
+		is_stock_item=False,
+		quantity_range=(1, 10),
+		descriptors=("Split Unit", "Ducted System", "Chiller Commissioning", "Piping Works"),
+	),
+	ItemFamily(
+		key="preventive_maintenance",
+		title="Preventive Maintenance",
+		kind="service",
+		item_group="HVAC Services",
+		uom="Nos",
+		cost_range=(20.0, 220.0),
+		margin_range=(0.48, 0.68),
+		lead_time_days=(0, 0),
+		catalog_weight=0.5,
+		demand_weight=1.2,
+		is_stock_item=False,
+		quantity_range=(1, 24),
+		descriptors=("Quarterly Visit", "Semi Annual Visit", "Annual Contract", "Coil Cleaning"),
+	),
+	ItemFamily(
+		key="repair_services",
+		title="Repair Services",
+		kind="service",
+		item_group="HVAC Services",
+		uom="Nos",
+		cost_range=(25.0, 300.0),
+		margin_range=(0.50, 0.70),
+		lead_time_days=(0, 0),
+		catalog_weight=0.5,
+		demand_weight=1.2,
+		is_stock_item=False,
+		quantity_range=(1, 8),
+		descriptors=("Gas Charging", "Leak Repair", "Compressor Replacement", "Control Fault"),
+	),
+]
+
+
+ARCHETYPE = Archetype(
+	id="hvac_distribution",
+	title="HVAC Equipment Distribution and Service",
+	description=(
+		"A wholesale distributor of cooling equipment, controls, and consumables that also "
+		"performs installation, preventive maintenance, and repair work for contractor and "
+		"retail customers."
+	),
+	default_country="Kuwait",
+	industry="Distribution",
+	item_groups=ITEM_GROUPS,
+	warehouses=[
+		{"type": "main_store", "title": "Main Store"},
+		{"type": "showroom", "title": "Showroom"},
+		{"type": "service_van", "title": "Service Van Stock"},
+	],
+	families=FAMILIES,
+	customer_segments={
+		"mep_contractor": 4.0,
+		"maintenance_contractor": 3.0,
+		"facilities_management": 2.0,
+		"retail_walk_in": 3.0,
+		"government_project": 1.0,
+	},
+	payment_terms={
+		"cash": 3.0,
+		"net_30": 4.0,
+		"net_60": 3.0,
+		"net_90": 1.5,
+	},
+	peak_months=[4, 5, 6, 7, 8, 9],
+	peak_multiplier=1.6,
+	cash_sales_ratio=0.25,
+	gross_margin_range=(0.08, 0.70),
+	uoms=["Nos", "Meter", "Kg", "Litre", "Box", "Hour", "Set"],
+)

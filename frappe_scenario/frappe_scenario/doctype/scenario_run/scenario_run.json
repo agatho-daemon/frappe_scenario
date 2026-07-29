@@ -1,0 +1,373 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "title",
+  "scenario_definition",
+  "column_break_header",
+  "status",
+  "approved",
+  "approved_by",
+  "section_scenario",
+  "archetype",
+  "country",
+  "currency",
+  "column_break_scenario",
+  "scale",
+  "seed",
+  "anchor_date",
+  "column_break_scenario_2",
+  "company",
+  "estimated_records",
+  "record_count",
+  "section_specification",
+  "specification",
+  "specification_hash",
+  "assumptions",
+  "section_plan",
+  "plan_json",
+  "compatibility",
+  "section_execution",
+  "started_at",
+  "finished_at",
+  "column_break_execution",
+  "manifest_file",
+  "steps",
+  "section_results",
+  "manifest_summary",
+  "published_capabilities",
+  "warnings",
+  "error",
+  "section_fingerprint",
+  "canonical_hash",
+  "structural_hash",
+  "column_break_fingerprint",
+  "canonical_details",
+  "section_review",
+  "validation_summary",
+  "cleanup_summary"
+ ],
+ "fields": [
+  {
+   "default": "SCN-RUN-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "SCN-RUN-.YYYY.-",
+   "set_only_once": 1
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "scenario_definition",
+   "fieldtype": "Link",
+   "label": "Scenario Definition",
+   "options": "Scenario Definition"
+  },
+  {
+   "fieldname": "column_break_header",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nQueued\nRunning\nCompleted\nFailed\nCleaned Up",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "description": "A run cannot execute until a human has approved its specification.",
+   "fieldname": "approved",
+   "fieldtype": "Check",
+   "label": "Approved",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_scenario",
+   "fieldtype": "Section Break",
+   "label": "Scenario"
+  },
+  {
+   "fieldname": "archetype",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Archetype",
+   "read_only": 1
+  },
+  {
+   "fieldname": "country",
+   "fieldtype": "Data",
+   "label": "Country",
+   "read_only": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Data",
+   "label": "Currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_scenario",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "scale",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Scale",
+   "read_only": 1
+  },
+  {
+   "fieldname": "seed",
+   "fieldtype": "Int",
+   "label": "Seed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "anchor_date",
+   "fieldtype": "Date",
+   "label": "Anchor Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_scenario_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Data",
+   "label": "Company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "estimated_records",
+   "fieldtype": "Int",
+   "label": "Estimated Records",
+   "read_only": 1
+  },
+  {
+   "fieldname": "record_count",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Records Created",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_specification",
+   "fieldtype": "Section Break",
+   "label": "Specification"
+  },
+  {
+   "description": "The fully resolved specification. It is frozen once the run is approved.",
+   "fieldname": "specification",
+   "fieldtype": "Code",
+   "label": "Specification",
+   "options": "JSON",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "specification_hash",
+   "fieldtype": "Data",
+   "label": "Specification Hash",
+   "read_only": 1
+  },
+  {
+   "description": "Every value the platform inferred rather than being told.",
+   "fieldname": "assumptions",
+   "fieldtype": "Code",
+   "label": "Assumptions",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_plan",
+   "fieldtype": "Section Break",
+   "label": "Plan"
+  },
+  {
+   "fieldname": "plan_json",
+   "fieldtype": "Code",
+   "label": "Plan",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "compatibility",
+   "fieldtype": "Code",
+   "label": "Compatibility",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_execution",
+   "fieldtype": "Section Break",
+   "label": "Execution"
+  },
+  {
+   "fieldname": "started_at",
+   "fieldtype": "Datetime",
+   "label": "Started At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "finished_at",
+   "fieldtype": "Datetime",
+   "label": "Finished At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_execution",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Private JSONL attachment listing every record this run created or modified.",
+   "fieldname": "manifest_file",
+   "fieldtype": "Data",
+   "label": "Manifest File",
+   "read_only": 1
+  },
+  {
+   "fieldname": "steps",
+   "fieldtype": "Table",
+   "label": "Steps",
+   "options": "Scenario Run Step",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_results",
+   "fieldtype": "Section Break",
+   "label": "Results"
+  },
+  {
+   "fieldname": "manifest_summary",
+   "fieldtype": "Code",
+   "label": "Manifest Summary",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "published_capabilities",
+   "fieldtype": "Code",
+   "label": "Published Capabilities",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "warnings",
+   "fieldtype": "Code",
+   "label": "Warnings",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "error",
+   "fieldtype": "Code",
+   "label": "Error",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_fingerprint",
+   "fieldtype": "Section Break",
+   "label": "Fingerprint"
+  },
+  {
+   "description": "Hash of the logical dataset, ignoring names, timestamps, and other volatile values.",
+   "fieldname": "canonical_hash",
+   "fieldtype": "Data",
+   "label": "Canonical Hash",
+   "read_only": 1
+  },
+  {
+   "description": "Hash of record counts by DocType.",
+   "fieldname": "structural_hash",
+   "fieldtype": "Data",
+   "label": "Structural Hash",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_fingerprint",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "canonical_details",
+   "fieldtype": "Code",
+   "label": "Canonical Details",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_review",
+   "fieldtype": "Section Break",
+   "label": "Review"
+  },
+  {
+   "fieldname": "validation_summary",
+   "fieldtype": "Code",
+   "label": "Validation Summary",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cleanup_summary",
+   "fieldtype": "Code",
+   "label": "Cleanup Summary",
+   "options": "JSON",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Scenario",
+ "name": "Scenario Run",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "title,status,archetype",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title",
+ "track_changes": 1
+}

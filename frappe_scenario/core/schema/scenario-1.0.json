@@ -1,0 +1,305 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://frappe-scenario.invalid/schema/scenario-1.0.json",
+	"title": "Frappe Scenario Specification",
+	"description": "Versioned, authoritative input describing a synthetic business scenario.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["schema_version", "scenario"],
+	"$defs": {
+		"ratio": {
+			"type": "number",
+			"minimum": 0,
+			"maximum": 1
+		},
+		"positive_integer": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"distribution": {
+			"type": "object",
+			"description": "Weighted mapping. Values are normalised; they need not sum to 1.",
+			"minProperties": 1,
+			"additionalProperties": {
+				"type": "number",
+				"minimum": 0
+			}
+		},
+		"range": {
+			"type": "array",
+			"minItems": 2,
+			"maxItems": 2,
+			"items": {
+				"type": "number"
+			}
+		},
+		"iso_date": {
+			"type": "string",
+			"pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+		}
+	},
+	"properties": {
+		"schema_version": {
+			"const": "1.0"
+		},
+		"title": {
+			"type": "string",
+			"maxLength": 140
+		},
+		"scenario": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["archetype"],
+			"properties": {
+				"archetype": {
+					"type": "string",
+					"pattern": "^[a-z][a-z0-9_]*$"
+				},
+				"country": {
+					"type": "string",
+					"minLength": 2,
+					"maxLength": 60
+				},
+				"locale": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"primary": {
+							"type": "string",
+							"pattern": "^[a-zA-Z]{2,3}(_[A-Za-z0-9]{2,8})*$"
+						},
+						"secondary": {
+							"type": "string",
+							"pattern": "^[a-zA-Z]{2,3}(_[A-Za-z0-9]{2,8})*$"
+						}
+					}
+				},
+				"currency": {
+					"type": "string",
+					"pattern": "^[A-Z]{3}$"
+				},
+				"anchor_date": {
+					"$ref": "#/$defs/iso_date"
+				},
+				"history_months": {
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 120
+				},
+				"scale": {
+					"enum": ["smoke", "small", "medium", "large", "custom"]
+				},
+				"seed": {
+					"type": "integer",
+					"minimum": 0,
+					"maximum": 4294967295
+				}
+			}
+		},
+		"company": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"name": {
+					"type": "string",
+					"minLength": 2,
+					"maxLength": 100
+				},
+				"abbr": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 5
+				},
+				"industry": {
+					"type": "string",
+					"maxLength": 140
+				},
+				"branches": {
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 20
+				},
+				"enable_perpetual_inventory": {
+					"type": "boolean"
+				},
+				"warehouses": {
+					"type": "array",
+					"maxItems": 20,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["type"],
+						"properties": {
+							"type": {
+								"type": "string",
+								"pattern": "^[a-z][a-z0-9_]*$"
+							},
+							"title": {
+								"type": "string",
+								"maxLength": 100
+							}
+						}
+					}
+				}
+			}
+		},
+		"parties": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"customers": {
+					"$ref": "#/$defs/positive_integer"
+				},
+				"suppliers": {
+					"$ref": "#/$defs/positive_integer"
+				},
+				"leads": {
+					"$ref": "#/$defs/positive_integer"
+				},
+				"customer_segments": {
+					"$ref": "#/$defs/distribution"
+				},
+				"payment_terms": {
+					"$ref": "#/$defs/distribution"
+				},
+				"cash_sales_ratio": {
+					"$ref": "#/$defs/ratio"
+				}
+			}
+		},
+		"catalog": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"families": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"type": "string",
+						"pattern": "^[a-z][a-z0-9_]*$"
+					}
+				},
+				"item_count": {
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 5000
+				},
+				"gross_margin_range": {
+					"$ref": "#/$defs/range"
+				},
+				"family_margin_overrides": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/range"
+					}
+				}
+			}
+		},
+		"operations": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"sales_orders_per_month": {
+					"$ref": "#/$defs/positive_integer"
+				},
+				"purchase_orders_per_month": {
+					"$ref": "#/$defs/positive_integer"
+				},
+				"seasonality": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"peak_months": {
+							"type": "array",
+							"maxItems": 12,
+							"items": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 12
+							}
+						},
+						"peak_multiplier": {
+							"type": "number",
+							"minimum": 1,
+							"maximum": 5
+						}
+					}
+				},
+				"partial_deliveries": {
+					"$ref": "#/$defs/ratio"
+				},
+				"returns": {
+					"$ref": "#/$defs/ratio"
+				},
+				"warranty_claims": {
+					"$ref": "#/$defs/ratio"
+				}
+			}
+		},
+		"accounting": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"customer_payment_ratio": {
+					"$ref": "#/$defs/ratio"
+				},
+				"supplier_payment_ratio": {
+					"$ref": "#/$defs/ratio"
+				},
+				"overdue_receivables": {
+					"$ref": "#/$defs/ratio"
+				},
+				"bad_debt_cases": {
+					"$ref": "#/$defs/positive_integer"
+				},
+				"bank_accounts": {
+					"type": "integer",
+					"minimum": 0,
+					"maximum": 10
+				},
+				"opening_capital": {
+					"type": "number",
+					"minimum": 0
+				},
+				"monthly_accruals": {
+					"type": "boolean"
+				},
+				"year_end_adjustments": {
+					"type": "boolean"
+				}
+			}
+		},
+		"providers": {
+			"type": "object",
+			"description": "Namespaced provider option fragments keyed by provider id.",
+			"propertyNames": {
+				"pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+			},
+			"additionalProperties": {
+				"type": "object"
+			}
+		},
+		"validation": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"customer_concentration_threshold": {
+					"$ref": "#/$defs/ratio"
+				},
+				"allow_below_cost_selling": {
+					"type": "boolean"
+				},
+				"margin_tolerance": {
+					"$ref": "#/$defs/ratio"
+				},
+				"skip_rules": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"pattern": "^[a-z][a-z0-9_.]*$"
+					}
+				}
+			}
+		}
+	}
+}

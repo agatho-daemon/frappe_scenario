@@ -1,0 +1,210 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "title",
+  "column_break_header",
+  "approval_status",
+  "edited_by_human",
+  "section_brief",
+  "brief",
+  "constraints",
+  "section_output",
+  "compiled_specification",
+  "assumptions",
+  "section_provenance",
+  "ai_provider",
+  "ai_model",
+  "prompt_version",
+  "column_break_provenance",
+  "schema_version",
+  "catalog_hash",
+  "input_hash",
+  "output_hash",
+  "section_approval",
+  "approved_by",
+  "column_break_approval",
+  "approved_on"
+ ],
+ "fields": [
+  {
+   "default": "SCN-AI-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "SCN-AI-.YYYY.-",
+   "set_only_once": 1
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_header",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Draft",
+   "description": "Nothing is generated from a draft until a human approves it.",
+   "fieldname": "approval_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Approval Status",
+   "options": "Draft\nPending Review\nApproved\nRejected"
+  },
+  {
+   "default": "0",
+   "description": "Set when a person changed the compiled specification after the agent produced it.",
+   "fieldname": "edited_by_human",
+   "fieldtype": "Check",
+   "label": "Edited By Human",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_brief",
+   "fieldtype": "Section Break",
+   "label": "Brief"
+  },
+  {
+   "description": "The real-world intent, in plain language.",
+   "fieldname": "brief",
+   "fieldtype": "Long Text",
+   "label": "Brief",
+   "reqd": 1
+  },
+  {
+   "fieldname": "constraints",
+   "fieldtype": "Code",
+   "label": "Constraints",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "section_output",
+   "fieldtype": "Section Break",
+   "label": "Compiled Output"
+  },
+  {
+   "description": "The specification an external agent compiled from the brief. It is data, not instructions.",
+   "fieldname": "compiled_specification",
+   "fieldtype": "Code",
+   "label": "Compiled Specification",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "assumptions",
+   "fieldtype": "Code",
+   "label": "Assumptions",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_provenance",
+   "fieldtype": "Section Break",
+   "label": "Provenance"
+  },
+  {
+   "fieldname": "ai_provider",
+   "fieldtype": "Data",
+   "label": "AI Provider"
+  },
+  {
+   "fieldname": "ai_model",
+   "fieldtype": "Data",
+   "label": "AI Model"
+  },
+  {
+   "fieldname": "prompt_version",
+   "fieldtype": "Data",
+   "label": "Prompt Version"
+  },
+  {
+   "fieldname": "column_break_provenance",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "schema_version",
+   "fieldtype": "Data",
+   "label": "Schema Version",
+   "read_only": 1
+  },
+  {
+   "description": "Hash of the capability catalog the agent compiled against.",
+   "fieldname": "catalog_hash",
+   "fieldtype": "Data",
+   "label": "Catalog Hash",
+   "read_only": 1
+  },
+  {
+   "fieldname": "input_hash",
+   "fieldtype": "Data",
+   "label": "Input Hash",
+   "read_only": 1
+  },
+  {
+   "fieldname": "output_hash",
+   "fieldtype": "Data",
+   "label": "Output Hash",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_approval",
+   "fieldtype": "Section Break",
+   "label": "Approval"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_approval",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "label": "Approved On",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Scenario",
+ "name": "Scenario AI Draft",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title",
+ "track_changes": 1
+}
