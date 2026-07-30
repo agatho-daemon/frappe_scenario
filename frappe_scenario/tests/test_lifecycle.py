@@ -10,6 +10,7 @@ cleanup gives the site back.
 
 import pytest
 
+from frappe_scenario.core.canonical import canonical_projection
 from frappe_scenario.core.engine import (
 	cleanup_run,
 	create_run,
@@ -19,7 +20,6 @@ from frappe_scenario.core.engine import (
 	plan,
 	validate_run,
 )
-from frappe_scenario.core.canonical import canonical_projection
 
 pytestmark = pytest.mark.erpnext_site
 
@@ -184,9 +184,7 @@ def test_the_same_seed_reproduces_the_same_dataset(erpnext_site, smoke_specifica
 	second = _generate(smoke_specification)
 	try:
 		second_projection = canonical_projection(load_manifest(second["run_id"]))
-		assert second_projection == first_projection, _first_difference(
-			first_projection, second_projection
-		)
+		assert second_projection == first_projection, _first_difference(first_projection, second_projection)
 		assert second["canonical_hash"] == generated["canonical_hash"]
 		assert second["record_count"] == generated["record_count"]
 	finally:

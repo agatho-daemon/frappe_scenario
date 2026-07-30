@@ -275,18 +275,24 @@ class ErpnextBuyingProvider(ScenarioProvider):
 			datetime.date(order_date.year + 5, 12, 31),
 		)
 
+		payload = {
+			"doctype": "Purchase Order",
+			"company": company,
+			"supplier": supplier["name"],
+			"transaction_date": order_date,
+			"schedule_date": schedule_date,
+			"currency": context.currency,
+			"set_warehouse": warehouse,
+			"payment_terms_template": terms.get(supplier.get("term_key") or "cash"),
+			"items": lines,
+		}
+		# ERPNext v16 introduced a transaction clock field whose default is the
+		# current time. Keep it seeded by the scenario rather than the wall clock.
+		if context.adapter.has_field("Purchase Order", "transaction_time"):
+			payload["transaction_time"] = POSTING_TIME
+
 		doc = context.insert(
-			{
-				"doctype": "Purchase Order",
-				"company": company,
-				"supplier": supplier["name"],
-				"transaction_date": order_date,
-				"schedule_date": schedule_date,
-				"currency": context.currency,
-				"set_warehouse": warehouse,
-				"payment_terms_template": terms.get(supplier.get("term_key") or "cash"),
-				"items": lines,
-			},
+			payload,
 			capability=ORDERS,
 			submit=True,
 			logical_id=f"purchase_order:{order_date.isoformat()}:{supplier['name']}",
