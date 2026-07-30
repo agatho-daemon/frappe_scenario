@@ -8,6 +8,8 @@ that a run validates, that the same seed reproduces the same dataset, and that
 cleanup gives the site back.
 """
 
+import datetime
+
 import pytest
 
 from frappe_scenario.core.canonical import canonical_projection
@@ -163,6 +165,8 @@ def test_an_export_is_enough_to_reproduce_and_review_a_run(generated):
 	assert exported["specification"]
 	assert exported["specification_hash"]
 	assert exported["canonical_hash"] == generated["canonical_hash"]
+	exported_at = datetime.datetime.fromisoformat(exported["exported_at"].replace("Z", "+00:00"))
+	assert exported_at.tzinfo == datetime.UTC
 
 	# A hash only means something alongside what produced it.
 	assert exported["compatibility"]["compatibility"]["adapter"]

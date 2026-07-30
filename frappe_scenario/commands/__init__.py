@@ -5,12 +5,13 @@
 Every command is a thin shell around :mod:`frappe_scenario.core.engine`, so the
 CLI, the whitelisted API, and the desk all take exactly the same code path.
 
-Run them as ``bench --site <site> scenario <command>``.
+Commands use the Bench default site unless ``--site <site>`` is supplied.
 """
 
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 import click
@@ -124,10 +125,11 @@ def describe(context: Any, as_json: bool) -> None:
 
 # -- specification -------------------------------------------------------------
 @scenario.command("validate-spec")
-@click.argument("specification_file", type=click.Path(exists=True, dir_okay=False))
+@click.argument("specification_file", type=click.Path(dir_okay=False))
 @pass_context
 def validate_spec(context: Any, specification_file: str) -> None:
 	"""Check a specification file against the schema without touching the site."""
+	specification_file = _resolve_specification_file(specification_file)
 	with _site(context):
 		from frappe_scenario.core.specification import read_specification_file, validate_schema
 
@@ -146,11 +148,12 @@ def validate_spec(context: Any, specification_file: str) -> None:
 
 
 @scenario.command("plan")
-@click.argument("specification_file", type=click.Path(exists=True, dir_okay=False))
+@click.argument("specification_file", type=click.Path(dir_okay=False))
 @click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
 @pass_context
 def plan_command(context: Any, specification_file: str, as_json: bool) -> None:
 	"""Show what a specification would create. Writes nothing."""
+	specification_file = _resolve_specification_file(specification_file)
 	with _site(context):
 		from frappe_scenario.core import engine
 		from frappe_scenario.core.specification import read_specification_file
@@ -187,7 +190,7 @@ def plan_command(context: Any, specification_file: str, as_json: bool) -> None:
 
 # -- execution -----------------------------------------------------------------
 @scenario.command("run")
-@click.argument("specification_file", type=click.Path(exists=True, dir_okay=False))
+@click.argument("specification_file", type=click.Path(dir_okay=False))
 @click.option("--title", help="Title for the run record.")
 @click.option("--definition", help="Scenario Definition to link the run to.")
 @click.option("--yes", is_flag=True, help="Approve the run without an interactive prompt.")
@@ -208,6 +211,7 @@ def run_command(
 	allow_non_disposable: bool,
 ) -> None:
 	"""Create, approve, and execute a run from a specification file."""
+	specification_file = _resolve_specification_file(specification_file)
 	with _site(context):
 		from frappe_scenario.core import engine
 		from frappe_scenario.core.specification import read_specification_file
@@ -362,6 +366,28 @@ def export_command(context: Any, run_name: str, output: str | None) -> None:
 
 
 # -- helpers -------------------------------------------------------------------
+def _resolve_specification_file(value: str) -> str:
+	"""Resolve a specification against either the process CWD or Bench root."""
+	path = Path(value).expanduser()
+	candidates = (
+		[path]
+		if path.is_absolute()
+		else [
+			Path.cwd() / path,
+			Path(frappe.utils.get_bench_path()) / path,
+		]
+	)
+	for candidate in candidates:
+		resolved = candidate.resolve()
+		if resolved.is_file():
+			return str(resolved)
+
+	raise click.BadParameter(
+		f"File {value!r} does not exist relative to the current directory or Bench root.",
+		param_hint="SPECIFICATION_FILE",
+	)
+
+
 class _site:
 	"""Connect to the site for the duration of a command."""
 

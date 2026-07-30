@@ -713,7 +713,7 @@ def export_run(run_name: str) -> dict[str, Any]:
 	manifest = load_manifest(run)
 	return {
 		"run_id": run.name,
-		"exported_at": datetime.datetime.utcnow().isoformat() + "Z",
+		"exported_at": datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z"),
 		"specification": json.loads(run.specification),
 		"specification_hash": run.specification_hash,
 		"plan": json.loads(run.plan_json or "{}"),

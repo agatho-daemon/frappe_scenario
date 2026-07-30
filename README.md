@@ -19,8 +19,8 @@ Generation is intended for disposable development sites. The target site must
 have both settings enabled:
 
 ```bash
-bench --site scenario15.local set-config developer_mode 1
-bench --site scenario15.local set-config frappe_scenario_disposable 1
+bench set-config developer_mode 1
+bench set-config frappe_scenario_disposable 1
 ```
 
 Do not install or run this app on a production site. Cleanup only operates on
@@ -33,8 +33,8 @@ The authoritative development checkout lives in the primary Bench:
 ```bash
 cd /path/to/frappe-bench
 bench get-app /path/to/frappe_scenario
-bench --site scenario15.local install-app frappe_scenario
-bench --site scenario15.local migrate
+bench install-app frappe_scenario
+bench migrate
 ```
 
 Frappe and ERPNext are managed by Bench. Faker, JSON Schema validation, and
@@ -42,41 +42,58 @@ YAML parsing are declared application dependencies.
 
 ## Quick start
 
+Scenario commands use the Bench default site configured by `bench use`.
+Supply `--site <site-name>` before `scenario` to target another site explicitly.
+
 Inspect the installed capability contract:
 
 ```bash
-bench --site scenario15.local scenario capabilities
-bench --site scenario15.local scenario describe
+bench scenario capabilities
+bench scenario describe
 ```
 
 Validate and plan the committed smoke scenario without generating records:
 
 ```bash
-bench --site scenario15.local scenario validate-spec \
+bench scenario validate-spec \
   apps/frappe_scenario/examples/hvac_kuwait_smoke.json
 
-bench --site scenario15.local scenario plan \
+bench scenario plan \
   apps/frappe_scenario/examples/hvac_kuwait_smoke.json
 ```
 
 Generate it after reviewing the plan:
 
 ```bash
-bench --site scenario15.local scenario run \
+bench scenario run \
   apps/frappe_scenario/examples/hvac_kuwait_smoke.json
 ```
 
 The command prints the `Scenario Run` name. Use it for the remaining lifecycle:
 
 ```bash
-bench --site scenario15.local scenario status SCN-RUN-YYYY-NNNNN
-bench --site scenario15.local scenario validate SCN-RUN-YYYY-NNNNN
-bench --site scenario15.local scenario export SCN-RUN-YYYY-NNNNN
-bench --site scenario15.local scenario cleanup SCN-RUN-YYYY-NNNNN
+bench scenario status SCN-RUN-YYYY-NNNNN
+bench scenario validate SCN-RUN-YYYY-NNNNN
+bench scenario export SCN-RUN-YYYY-NNNNN
+bench scenario cleanup SCN-RUN-YYYY-NNNNN
 ```
 
 Pass `--background` to `scenario run` to enqueue generation on the long queue.
 The Bench worker must be running before using background mode.
+
+### Inspecting another development site
+
+`bench start` serves the Bench default site. To inspect a different site without
+changing that default, run a dedicated development server on an unused port:
+
+```bash
+bench --site <site-name> serve --port 8015
+```
+
+Then open `http://<site-name>:8015`. Ensure the site hostname resolves to
+`127.0.0.1` (and optionally `::1`) in `/etc/hosts`. Use the Bench's persistent
+development terminal/session for the server and avoid starting duplicate Bench
+services.
 
 ## External-agent workflow
 
@@ -130,8 +147,6 @@ develop. Each compatibility Bench must test the exact same committed revision.
 - No Crispy Print or other third-party app code is modified or imported.
 - HRMS, manufacturing, projects, assets, lending, regional compliance, and
   broader archetypes remain future providers.
-
-See [DECISIONS.md](DECISIONS.md) for design decisions and compatibility rules.
 
 ## License
 
