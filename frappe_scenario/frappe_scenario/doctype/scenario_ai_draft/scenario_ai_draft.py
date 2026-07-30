@@ -16,7 +16,12 @@ from frappe import _
 from frappe.model.document import Document
 
 from frappe_scenario.core.errors import ScenarioError
-from frappe_scenario.core.specification import SCHEMA_VERSION, load_specification, validate_schema
+from frappe_scenario.core.specification import (
+	SCHEMA_VERSION,
+	load_specification,
+	problems_as_html,
+	validate_schema,
+)
 
 
 class ScenarioAIDraft(Document):
@@ -33,11 +38,16 @@ class ScenarioAIDraft(Document):
 
 		try:
 			specification = load_specification(self.compiled_specification)
-			validate_schema(specification)
 		except ScenarioError as exception:
 			frappe.throw(_(str(exception)), title=_("Invalid Compiled Specification"))
 		except ValueError as exception:
 			frappe.throw(_("Compiled specification is not valid JSON or YAML: {0}").format(exception))
+
+		# ``validate_schema`` reports rather than raises, so an unchecked return
+		# value would let an invalid draft reach approval.
+		problems = validate_schema(specification)
+		if problems:
+			frappe.throw(problems_as_html(problems), title=_("Invalid Compiled Specification"))
 
 		self.schema_version = specification.get("schema_version") or SCHEMA_VERSION
 		self.compiled_specification = json.dumps(specification, indent="\t", sort_keys=True)

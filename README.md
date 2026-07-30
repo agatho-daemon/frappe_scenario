@@ -1,33 +1,138 @@
-### Frappe Scenario
+# Frappe Scenario
 
-Deterministic, AI-operable synthetic scenario data generation for Frappe and ERPNext
+Deterministic, AI-operable synthetic business data for Frappe and ERPNext.
 
-### Installation
+Frappe Scenario turns a versioned JSON or YAML specification into a coherent,
+owned dataset created through normal Frappe and ERPNext document APIs. A run can
+be planned without writing data, generated synchronously or on a worker,
+validated, exported, reproduced from the same seed, and cleaned up without
+touching records owned by another run.
 
-You can install this app using the [bench](https://github.com/frappe/bench) CLI:
+The first vertical slice models a Kuwait HVAC distributor. It creates company
+and accounting foundations, locale-aware parties and addresses, a priced item
+catalogue, opening stock, linked buying and selling lifecycles, invoices,
+payments, and balanced ledger activity.
+
+## Safety
+
+Generation is intended for disposable development sites. The target site must
+have both settings enabled:
 
 ```bash
-cd $PATH_TO_YOUR_BENCH
-bench get-app $URL_OF_THIS_REPO --branch develop
-bench install-app frappe_scenario
+bench --site scenario15.local set-config developer_mode 1
+bench --site scenario15.local set-config frappe_scenario_disposable 1
 ```
 
-### Contributing
+Do not install or run this app on a production site. Cleanup only operates on
+records and setting changes recorded in a run's private ownership manifest.
 
-This app uses `pre-commit` for code formatting and linting. Please [install pre-commit](https://pre-commit.com/#installation) and enable it for this repository:
+## Installation
+
+The authoritative development checkout lives in the primary Bench:
 
 ```bash
-cd apps/frappe_scenario
-pre-commit install
+cd /path/to/frappe-bench
+bench get-app /path/to/frappe_scenario
+bench --site scenario15.local install-app frappe_scenario
+bench --site scenario15.local migrate
 ```
 
-Pre-commit is configured to use the following tools for checking and formatting your code:
+Frappe and ERPNext are managed by Bench. Faker, JSON Schema validation, and
+YAML parsing are declared application dependencies.
 
-- ruff
-- eslint
-- prettier
-- pyupgrade
+## Quick start
 
-### License
+Inspect the installed capability contract:
 
-gpl-3.0
+```bash
+bench --site scenario15.local scenario capabilities
+bench --site scenario15.local scenario describe
+```
+
+Validate and plan the committed smoke scenario without generating records:
+
+```bash
+bench --site scenario15.local scenario validate-spec \
+  apps/frappe_scenario/examples/hvac_kuwait_smoke.json
+
+bench --site scenario15.local scenario plan \
+  apps/frappe_scenario/examples/hvac_kuwait_smoke.json
+```
+
+Generate it after reviewing the plan:
+
+```bash
+bench --site scenario15.local scenario run \
+  apps/frappe_scenario/examples/hvac_kuwait_smoke.json
+```
+
+The command prints the `Scenario Run` name. Use it for the remaining lifecycle:
+
+```bash
+bench --site scenario15.local scenario status SCN-RUN-YYYY-NNNNN
+bench --site scenario15.local scenario validate SCN-RUN-YYYY-NNNNN
+bench --site scenario15.local scenario export SCN-RUN-YYYY-NNNNN
+bench --site scenario15.local scenario cleanup SCN-RUN-YYYY-NNNNN
+```
+
+Pass `--background` to `scenario run` to enqueue generation on the long queue.
+The Bench worker must be running before using background mode.
+
+## External-agent workflow
+
+The app does not call an AI model and stores no model credentials. An external
+agent such as Claude or Codex can:
+
+1. Call `frappe_scenario.api.capabilities.describe_capabilities`.
+2. Call `frappe_scenario.api.agent.compile_brief` to obtain the schema,
+   capability catalogue, constraints, and compilation instructions.
+3. Compile the user's brief outside the app.
+4. Submit the result with `frappe_scenario.api.agent.submit_draft`.
+5. Leave the resulting `Scenario AI Draft` for human review and approval.
+
+The submitted specification is treated as untrusted data. Only registered
+provider paths and schema-valid values can reach the deterministic generator.
+
+## Tests
+
+Pure tests need no site:
+
+```bash
+cd /path/to/frappe-bench
+env/bin/python -m pytest -m pure \
+  apps/frappe_scenario/frappe_scenario/tests -q
+```
+
+Site tiers require a disposable site:
+
+```bash
+FRAPPE_SCENARIO_TEST_SITE=scenario15.local \
+  env/bin/python -m pytest -m frappe_site \
+  apps/frappe_scenario/frappe_scenario/tests -q
+
+FRAPPE_SCENARIO_TEST_SITE=scenario15.local \
+  env/bin/python -m pytest -m erpnext_site \
+  apps/frappe_scenario/frappe_scenario/tests -q
+```
+
+The ERPNext tier writes and then removes real documents. It proves planning,
+manifest ownership, validation, balanced books, cleanup, and deterministic
+regeneration.
+
+Supported compatibility targets are Frappe/ERPNext v15, v16, and current
+develop. Each compatibility Bench must test the exact same committed revision.
+
+## Current boundaries
+
+- Only the smoke-scale HVAC distribution vertical slice is proven end to end.
+- The AI integration is an external-agent contract, not a built-in model
+  adapter.
+- No Crispy Print or other third-party app code is modified or imported.
+- HRMS, manufacturing, projects, assets, lending, regional compliance, and
+  broader archetypes remain future providers.
+
+See [DECISIONS.md](DECISIONS.md) for design decisions and compatibility rules.
+
+## License
+
+GPL-3.0-or-later.

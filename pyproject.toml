@@ -20,9 +20,17 @@ dependencies = [
 requires = ["flit_core >=3.4,<4"]
 build-backend = "flit_core.buildapi"
 
+[tool.pytest.ini_options]
+testpaths = ["frappe_scenario/tests"]
+markers = [
+    "pure: no Frappe site and no database; safe and fast to run anywhere",
+    "frappe_site: needs a connected Frappe site",
+    "erpnext_site: needs a connected site with ERPNext installed, and writes documents",
+]
+
 # These dependencies are only installed when developer mode is enabled
 [tool.bench.dev-dependencies]
-# package_name = "~=1.1.0"
+pytest = ">=7.4"
 
 # These apt dependencies will be installed from Ubuntu repositories when you host your app on Frappe Cloud
 [deploy.dependencies.apt]

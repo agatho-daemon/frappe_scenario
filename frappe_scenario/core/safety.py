@@ -41,7 +41,7 @@ def _blockers(*, allow_non_disposable: bool) -> list[dict[str, str]]:
 			{
 				"check": "developer_mode",
 				"message": "developer_mode is not enabled on this site.",
-				"remediation": f"bench --site {frappe.local.site} set-config -g developer_mode 1",
+				"remediation": f"bench --site {frappe.local.site} set-config developer_mode 1",
 			}
 		)
 

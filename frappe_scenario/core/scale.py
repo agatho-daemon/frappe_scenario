@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from frappe_scenario.core.errors import SpecificationError
+
 SCALE_PROFILES: dict[str, dict[str, Any]] = {
 	"smoke": {
 		"description": "One company and one example of each critical lifecycle. Under 200 records.",
@@ -57,7 +59,21 @@ DEFAULT_SCALE = "smoke"
 
 
 def get_scale_profile(scale: str) -> dict[str, Any]:
-	return SCALE_PROFILES.get(scale) or SCALE_PROFILES[DEFAULT_SCALE]
+	"""The profile for a named scale.
+
+	An unknown name is an error rather than a quiet fallback: substituting the
+	default would hand back a far smaller dataset than was asked for, and the
+	mismatch would only surface much later as puzzling record counts.
+	"""
+	profile = SCALE_PROFILES.get(scale)
+	if profile is None:
+		known = ", ".join(sorted(SCALE_PROFILES))
+		raise SpecificationError(
+			f"Unknown scale '{scale}'. Known scales are: {known}.",
+			phase="plan",
+			details={"scale": scale, "known": sorted(SCALE_PROFILES)},
+		)
+	return profile
 
 
 def describe_scale_profiles() -> list[dict[str, Any]]:

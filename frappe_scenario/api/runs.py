@@ -20,8 +20,12 @@ def validate_spec(specification: str | dict[str, Any]) -> dict[str, Any]:
 	"""Check a specification against the schema. Touches nothing."""
 	frappe.only_for(ROLE)
 	parsed = load_specification(specification)
-	validate_schema(parsed)
-	return {"valid": True, "schema_version": parsed.get("schema_version")}
+	problems = validate_schema(parsed)
+	return {
+		"valid": not problems,
+		"problems": problems,
+		"schema_version": parsed.get("schema_version"),
+	}
 
 
 @frappe.whitelist()

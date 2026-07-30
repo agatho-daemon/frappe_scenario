@@ -22,7 +22,6 @@ from frappe_scenario.core.specification import (
 	SCHEMA_VERSION,
 	load_specification,
 	resolve_specification,
-	validate_schema,
 )
 
 ROLE = "System Manager"
@@ -85,7 +84,6 @@ def submit_draft(
 	frappe.only_for(ROLE)
 
 	specification = load_specification(compiled_specification)
-	validate_schema(specification)
 	resolved, assumptions = resolve_specification(specification)
 
 	doc = frappe.get_doc(DRAFT_DOCTYPE, draft) if draft else frappe.new_doc(DRAFT_DOCTYPE)

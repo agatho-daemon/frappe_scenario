@@ -14,13 +14,22 @@ from frappe import _
 from frappe.model.document import Document
 
 from frappe_scenario.core.errors import ScenarioError
-from frappe_scenario.core.specification import SCHEMA_VERSION, load_specification, validate_schema
+from frappe_scenario.core.specification import (
+	SCHEMA_VERSION,
+	load_specification,
+	problems_as_html,
+	validate_schema,
+)
 
 
 class ScenarioDefinition(Document):
 	def validate(self) -> None:
 		specification = self._parsed_specification()
-		validate_schema(specification)
+		# ``validate_schema`` reports rather than raises, so an unchecked return
+		# value would let an invalid definition be saved and later generated from.
+		problems = validate_schema(specification)
+		if problems:
+			frappe.throw(problems_as_html(problems), title=_("Invalid Specification"))
 		self._fill_summary(specification)
 
 	def _parsed_specification(self) -> dict:

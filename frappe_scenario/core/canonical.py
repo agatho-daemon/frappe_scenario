@@ -62,6 +62,26 @@ VOLATILE_FIELDS = frozenset(
 #: harmless floating point drift between platforms.
 _FLOAT_PRECISION = 6
 
+#: Monetary stock valuation figures ERPNext derives from the ledger rather than
+#: values a provider wrote. A valuation repost rewrites them at full float
+#: width, while the original voucher stores them at the configured currency
+#: precision. Normalizing to that same currency precision absorbs the lifecycle
+#: timing difference without dropping the financially meaningful fields.
+DERIVED_CURRENCY_FIELDS = frozenset(
+	{
+		"basic_rate",
+		"incoming_rate",
+		"outgoing_rate",
+		"stock_value",
+		"stock_value_difference",
+		"valuation_rate",
+	}
+)
+
+
+def _currency_precision() -> int:
+	return frappe.utils.cint(frappe.get_cached_value("System Settings", None, "currency_precision")) or 2
+
 
 def build_logical_ids(manifest: Manifest) -> dict[str, str]:
 	"""Map ``Doctype/name`` to a stable logical identity."""
@@ -97,11 +117,17 @@ def _normalise(value: Any, logical: dict[str, str]) -> Any:
 		return [_normalise(item, logical) for item in value]
 	if isinstance(value, dict):
 		return {
-			key: _normalise(item, logical)
+			key: _normalise_field(key, item, logical)
 			for key, item in sorted(value.items())
 			if key not in VOLATILE_FIELDS
 		}
 	return str(value)
+
+
+def _normalise_field(key: str, value: Any, logical: dict[str, str]) -> Any:
+	if key in DERIVED_CURRENCY_FIELDS and isinstance(value, float | Decimal):
+		return round(float(value), _currency_precision())
+	return _normalise(value, logical)
 
 
 def _project(doctype: str, name: str, logical: dict[str, str], doc: Any = None) -> dict[str, Any] | None:

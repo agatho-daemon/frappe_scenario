@@ -170,6 +170,18 @@ def _validate_semantics(spec: dict[str, Any]) -> list[dict[str, Any]]:
 	return problems
 
 
+def problems_as_html(problems: list[dict[str, Any]]) -> str:
+	"""Render schema problems for a desk message, escaping the offending values."""
+	import frappe
+
+	items = "".join(
+		f"<li><code>{frappe.utils.escape_html(problem.get('path') or '/')}</code>: "
+		f"{frappe.utils.escape_html(problem.get('message') or '')}</li>"
+		for problem in problems
+	)
+	return f"<ul>{items}</ul>"
+
+
 def _deep_default(target: dict[str, Any], defaults: dict[str, Any]) -> dict[str, Any]:
 	"""Fill missing keys from ``defaults`` without overwriting explicit values."""
 	for key, value in defaults.items():
