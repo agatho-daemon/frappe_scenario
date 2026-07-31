@@ -9,10 +9,12 @@ dataset exists and does not silently alter either of those choices.
 
 from __future__ import annotations
 
+import datetime
 from copy import deepcopy
 from typing import Any
 
 from frappe_scenario.core.errors import SpecificationError
+from frappe_scenario.providers.support.calendar_tools import month_starts, seasonal_counts
 
 PRODUCT_INTENTS = (
 	"Learn ERPNext",
@@ -107,3 +109,44 @@ def derive_lifecycle_counts(
 		"purchase_invoices": purchase_invoices,
 		"supplier_payments": round(purchase_invoices * float(accounting["supplier_payment_ratio"])),
 	}
+
+
+def forecast_specification_lifecycle(specification: dict[str, Any]) -> dict[str, int]:
+	"""Forecast provider document counts from one resolved business specification."""
+	scenario = specification["scenario"]
+	operations = specification.get("operations") or {}
+	seasonality = operations.get("seasonality") or {}
+	anchor = datetime.date.fromisoformat(scenario["anchor_date"])
+	months_count = int(scenario["history_months"])
+	year, month = anchor.year, anchor.month - months_count
+	while month <= 0:
+		month += 12
+		year -= 1
+	months = month_starts(datetime.date(year, month, 1), months_count)
+	peak_months = seasonality.get("peak_months") or []
+	peak_multiplier = float(seasonality.get("peak_multiplier") or 1)
+	sales = sum(
+		seasonal_counts(
+			int(operations.get("sales_orders_per_month") or 0), months, peak_months, peak_multiplier
+		)
+	)
+	purchases = sum(
+		seasonal_counts(
+			int(operations.get("purchase_orders_per_month") or 0),
+			months,
+			peak_months,
+			peak_multiplier,
+		)
+	)
+	providers = specification.get("providers") or {}
+	return derive_lifecycle_counts(
+		sales_activities=sales,
+		purchase_orders=purchases,
+		depth=scenario["depth"],
+		cash_sales_ratio=float((specification.get("parties") or {}).get("cash_sales_ratio") or 0),
+		overrides={
+			"selling": providers.get("erpnext.selling") or {},
+			"buying": providers.get("erpnext.buying") or {},
+			"accounting": specification.get("accounting") or {},
+		},
+	)

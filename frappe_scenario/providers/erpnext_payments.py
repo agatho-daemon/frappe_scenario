@@ -21,6 +21,7 @@ from frappe.query_builder import DocType
 from frappe.query_builder.functions import Sum
 
 from frappe_scenario.core.context import ScenarioContext
+from frappe_scenario.core.lifecycle import forecast_specification_lifecycle
 from frappe_scenario.core.provider import (
 	CapabilityDeclaration,
 	ProviderResult,
@@ -43,7 +44,7 @@ PAYMENT_ENTRY_MODULE = "erpnext.accounts.doctype.payment_entry.payment_entry"
 
 class ErpnextPaymentsProvider(ScenarioProvider):
 	id = "erpnext.payments"
-	version = "0.1.0"
+	version = "0.2.0"
 	title = "ERPNext Payments and Accruals"
 	description = "Customer receipts, supplier payments, and recurring accrual journal entries."
 	role = "extender"
@@ -92,16 +93,19 @@ class ErpnextPaymentsProvider(ScenarioProvider):
 	# -- planning ------------------------------------------------------------
 	def plan(self, context: ScenarioContext) -> ScenarioPlan:
 		accounting = context.section("accounting")
+		lifecycle = forecast_specification_lifecycle(context.specification)
 		plan = ScenarioPlan(provider=self.id)
 		plan.step(
 			RECEIPTS,
 			f"Settle about {float(accounting.get('customer_payment_ratio') or 0.75):.0%} of sales invoices.",
 			doctype="Payment Entry",
+			count=lifecycle["customer_payments"],
 		)
 		plan.step(
 			PAYMENTS,
 			f"Settle about {float(accounting.get('supplier_payment_ratio') or 0.7):.0%} of purchase invoices.",
 			doctype="Payment Entry",
+			count=lifecycle["supplier_payments"],
 		)
 		if accounting.get("monthly_accruals", True):
 			plan.step(

@@ -502,6 +502,8 @@ def estimate_records(choices: dict[str, Any]) -> dict[str, Any]:
 	}
 	approximate = sum(breakdown.values())
 	target = profile["record_target"]
+	database_rows = round(approximate + (sales + purchases) * 7.5)
+	storage_typical = round(database_rows * 2.75 / 1024, 1)
 	return {
 		"approximate": approximate,
 		"minimum": target["minimum"],
@@ -510,6 +512,17 @@ def estimate_records(choices: dict[str, Any]) -> dict[str, Any]:
 		"history_months": months,
 		"breakdown": breakdown,
 		"lifecycle": lifecycle,
+		"database_rows": database_rows,
+		"storage_mb": {
+			"minimum": round(storage_typical * 0.7, 1),
+			"typical": storage_typical,
+			"maximum": round(storage_typical * 1.5, 1),
+		},
+		"runtime_minutes": {
+			"minimum": max(1, approximate // 900),
+			"maximum": max(2, -(-approximate // 180)),
+		},
+		"confirmation_required": bool(profile.get("confirmation_required")),
 	}
 
 
@@ -519,6 +532,11 @@ def _proposal_warnings(choices: dict[str, Any], report: dict[str, Any]) -> list[
 		warnings.append("Reusing a company limits cleanup guarantees for shared records and settings.")
 	if (report.get("existing_business_data") or {}).get("total"):
 		warnings.append("The site already contains business data; existing records will be preserved.")
+	if get_scale_profile(choices["scale"]).get("confirmation_required"):
+		warnings.append(
+			"Large generation may create tens of thousands of records. Use a disposable site and "
+			"keep a long worker running."
+		)
 	return warnings
 
 

@@ -244,6 +244,14 @@
 				"returns": {
 					"$ref": "#/$defs/ratio"
 				},
+				"customer_concentration": {
+					"$ref": "#/$defs/ratio",
+					"description": "Relative weighting of repeat sales toward the most active customers."
+				},
+				"supplier_concentration": {
+					"$ref": "#/$defs/ratio",
+					"description": "Relative weighting of purchasing toward strategic suppliers."
+				},
 				"warranty_claims": {
 					"$ref": "#/$defs/ratio"
 				}

@@ -335,6 +335,12 @@ def plan_command(context: Any, specification_file: str, as_json: bool) -> None:
 	)
 	click.echo(f"Specification hash: {execution_plan['specification_hash']}")
 	click.echo(f"Estimated records:  {execution_plan['estimated_records']}")
+	resources = execution_plan["resource_estimate"]
+	click.echo(
+		f"Estimated database rows: {resources['database_rows']:,}; storage "
+		f"{resources['storage_mb']['minimum']}-{resources['storage_mb']['maximum']} MB; runtime "
+		f"{resources['runtime_minutes']['minimum']}-{resources['runtime_minutes']['maximum']} minutes"
+	)
 	click.echo("Execution order:")
 	for provider_id in execution_plan["execution_order"]:
 		click.echo(f"  - {provider_id}")
@@ -346,6 +352,7 @@ def plan_command(context: Any, specification_file: str, as_json: bool) -> None:
 		],
 	)
 	_echo_list("Unsupported", execution_plan["unsupported"], colour="yellow")
+	_echo_list("Warnings", execution_plan["warnings"], colour="yellow")
 	_echo_blockers(execution_plan)
 
 
@@ -387,7 +394,15 @@ def run_command(
 		click.echo(f"Created run {click.style(run_name, bold=True)}.")
 
 		if not yes:
-			click.echo(f"It will create roughly {execution_plan['estimated_records']} records.")
+			resources = execution_plan["resource_estimate"]
+			click.echo(
+				f"It will create roughly {execution_plan['estimated_records']:,} documents and "
+				f"{resources['database_rows']:,} database rows. Estimated runtime is "
+				f"{resources['runtime_minutes']['minimum']}-"
+				f"{resources['runtime_minutes']['maximum']} minutes."
+			)
+			for warning in execution_plan["warnings"]:
+				click.echo(click.style(f"Warning: {warning}", fg="yellow", bold=True))
 			click.confirm("Approve and execute this run?", abort=True)
 
 		engine.approve_run(run_name)
@@ -688,7 +703,7 @@ def _prompt_setup_choices(model: dict[str, Any]) -> dict[str, Any]:
 		"smoke": 2,
 		"small": 3,
 		"medium": 24,
-		"large": 60,
+		"large": 36,
 		"custom": defaults["history_months"],
 	}
 	choices["history_months"] = click.prompt(
@@ -704,7 +719,10 @@ def _print_setup_proposal(proposal: dict[str, Any]) -> None:
 	click.echo(
 		click.style(
 			f"Preview: {proposal['mutation_count']} setup changes; approximately "
-			f"{estimate['approximate']} records ({estimate['minimum']}-{estimate['maximum']}).",
+			f"{estimate['approximate']} records ({estimate['minimum']}-{estimate['maximum']}), "
+			f"{estimate['database_rows']:,} database rows, "
+			f"{estimate['runtime_minutes']['minimum']}-"
+			f"{estimate['runtime_minutes']['maximum']} minutes.",
 			bold=True,
 		)
 	)

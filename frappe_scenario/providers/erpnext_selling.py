@@ -58,7 +58,7 @@ MAX_DISCOUNT = 0.08
 
 class ErpnextSellingProvider(ScenarioProvider):
 	id = "erpnext.selling"
-	version = "0.1.0"
+	version = "0.2.0"
 	title = "ERPNext Selling"
 	description = "Sales orders, delivery notes, and sales invoices with seasonal demand."
 	role = "extender"
@@ -235,7 +235,13 @@ class ErpnextSellingProvider(ScenarioProvider):
 
 		for month, count in zip(months, counts, strict=True):
 			for order_date in dates_in_month(random, pack, month, count, not_after=context.anchor_date):
-				customer = random.choice(customers)
+				customer = random.choices(
+					customers,
+					weights=_activity_weights(
+						len(customers), float(operations.get("customer_concentration") or 0)
+					),
+					k=1,
+				)[0]
 				lines = self._build_lines(random, items, available, line_bounds, pack, max_discount, context)
 				if not lines:
 					context.warning("Ran out of sellable stock; remaining sales were skipped.")
@@ -800,3 +806,11 @@ class ErpnextSellingProvider(ScenarioProvider):
 				observed=round(peak_mean, 2),
 				expected=f"> {off_peak_mean:.2f}",
 			)
+
+
+def _activity_weights(count: int, concentration: float) -> list[float]:
+	"""A bounded deterministic long-tail without allowing one party to dominate."""
+	if count <= 1:
+		return [1.0] * count
+	concentration = min(max(concentration, 0.0), 1.0)
+	return [1.0 + concentration * 4.0 * (1.0 - index / (count - 1)) for index in range(count)]

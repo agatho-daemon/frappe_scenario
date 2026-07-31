@@ -156,6 +156,25 @@ continues a failed or cancelled run; `retry` is the explicit failed-phase form.
 failed or cancelled run, then leaves it ready to resume. Full `cleanup` remains
 available at every supported scale and consults only the ownership manifest.
 
+### Realistic scale profiles
+
+`medium` models 12–24 months and defaults to 24 months, with thousands of
+linked business documents. `large` models 24–36 months and defaults to 36
+months, with tens of thousands of documents; it always carries a prominent
+large-run warning and requires the normal explicit run approval.
+
+Counts are derived from business activity and lifecycle ratios. Seasonal
+monthly demand drives sales and purchases; fulfillment ratios drive deliveries
+and receipts; invoicing and payment behavior drive books and ageing. Customer
+and supplier concentration is a bounded long-tail distribution. Catalog costs,
+selling margins, item lead times, stock cover, and regional seasonality remain
+deterministic under the scenario seed.
+
+Both `scenario plan` and onboarding preview report estimated manifest
+documents, underlying database rows, storage range, and controller runtime.
+These are planning ranges—not quotas—because ERPNext controllers create child,
+ledger, and stock rows according to the resolved business lifecycle.
+
 ### Inspecting another development site
 
 `bench start` serves the Bench default site. To inspect a different site without

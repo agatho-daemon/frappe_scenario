@@ -94,6 +94,9 @@ def plan(specification: str | dict[str, Any], *, allow_non_disposable: bool = Fa
 
 	safety = site_safety_report()
 	blocked = not safety["generation_allowed"] and not allow_non_disposable
+	from frappe_scenario.core.capacity import estimate_resources
+
+	resources = estimate_resources(resolved, total)
 
 	return {
 		"schema_version": resolved["schema_version"],
@@ -109,6 +112,9 @@ def plan(specification: str | dict[str, Any], *, allow_non_disposable: bool = Fa
 			{capability for provider in graph.order for capability in provider.requires_capabilities}
 		),
 		"estimated_records": total,
+		"resource_estimate": resources,
+		"confirmation_required": resources["confirmation_required"],
+		"warnings": resources["warnings"],
 		"unsupported": unsupported,
 		"settings_changed": settings_changed,
 		"cleanup_notes": cleanup_notes,
@@ -742,6 +748,7 @@ def load_manifest(run: Any | str) -> Manifest:
 # ---------------------------------------------------------------------------
 def get_status(run_name: str) -> dict[str, Any]:
 	run = frappe.get_doc(RUN_DOCTYPE, run_name)
+	stored_plan = json.loads(run.plan_json or "{}")
 	return {
 		"run_id": run.name,
 		"title": run.title,
@@ -760,6 +767,7 @@ def get_status(run_name: str) -> dict[str, Any]:
 		"structural_hash": run.structural_hash,
 		"record_count": run.record_count,
 		"estimated_records": run.estimated_records,
+		"resource_estimate": stored_plan.get("resource_estimate") or {},
 		"progress": {
 			"completed_phases": sum(step.status == "Completed" for step in run.steps),
 			"total_phases": len(run.steps),

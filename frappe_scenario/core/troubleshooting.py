@@ -341,14 +341,22 @@ def _low_credit_limit(run: Any) -> dict[str, Any]:
 	)
 	row = next((row for row in doc.credit_limits if row.company == run.company), None)
 	if row:
-		row.credit_limit = outstanding
-		row.bypass_credit_limit_check = 0
+		# This lab intentionally creates a state that the Customer controller
+		# correctly refuses during normal editing. Write only the owned child row
+		# after the checkpoint so the exercise is possible and fully restorable.
+		frappe.db.set_value(
+			row.doctype,
+			row.name,
+			{"credit_limit": outstanding, "bypass_credit_limit_check": 0},
+			update_modified=False,
+		)
 	else:
-		doc.append(
+		row = doc.append(
 			"credit_limits",
 			{"company": run.company, "credit_limit": outstanding, "bypass_credit_limit_check": 0},
 		)
-	doc.save(ignore_permissions=True)
+		row.db_insert()
+	frappe.clear_document_cache("Customer", customer)
 	source_name = _owned_name(run, "Sales Order", filters={"customer": customer})
 	order = _draft_sales_order(run, source_name, quantity_multiplier=1)
 	return _injection(

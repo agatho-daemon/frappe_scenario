@@ -277,7 +277,17 @@ def resolve_specification(spec: dict[str, Any]) -> tuple[dict[str, Any], list[di
 	before = deepcopy(resolved)
 	for defaults, reason in (
 		(
-			{k: v for k, v in scale_profile.items() if k not in {"description", "record_target"}},
+			{
+				k: v
+				for k, v in scale_profile.items()
+				if k
+				not in {
+					"description",
+					"record_target",
+					"history_range",
+					"confirmation_required",
+				}
+			},
 			f"scale profile {scale_name}",
 		),
 		(depth_specification_defaults(scenario["depth"]), f"operational depth {scenario['depth']}"),

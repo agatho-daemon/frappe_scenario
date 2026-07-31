@@ -31,6 +31,7 @@ from frappe_scenario.core.experimentation import (
 )
 from frappe_scenario.core.learning import learning_home, verify_step
 from frappe_scenario.core.narrative import explain_record
+from frappe_scenario.core.scale import get_scale_profile
 from frappe_scenario.core.troubleshooting import (
 	activate_problem,
 	check_diagnosis,
@@ -160,6 +161,28 @@ def test_a_plan_warns_about_what_cleanup_will_not_restore(erpnext_site, smoke_sp
 	described = plan(smoke_specification)
 	assert described["cleanup_notes"]
 	assert described["settings_changed"]
+
+
+@pytest.mark.parametrize("scale,history,confirmation", [("medium", 24, False), ("large", 36, True)])
+def test_realistic_scale_plans_match_their_volume_contract(erpnext_site, scale, history, confirmation):
+	described = plan(
+		{
+			"schema_version": "1.0",
+			"scenario": {
+				"archetype": "hvac_distribution",
+				"country": "Kuwait",
+				"scale": scale,
+				"anchor_date": "2026-07-31",
+				"seed": 17,
+			},
+		}
+	)
+	target = get_scale_profile(scale)["record_target"]
+	assert described["specification"]["scenario"]["history_months"] == history
+	assert target["minimum"] <= described["estimated_records"] <= target["maximum"]
+	assert described["resource_estimate"]["database_rows"] > described["estimated_records"]
+	assert described["confirmation_required"] is confirmation
+	assert described["resource_estimate"]["lifecycle"]["customer_payments"] > 0
 
 
 def test_a_generated_scenario_records_everything_it_created(generated):

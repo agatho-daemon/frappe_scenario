@@ -4,14 +4,19 @@
 
 import pytest
 
+from frappe_scenario.core.capacity import estimate_resources
 from frappe_scenario.core.errors import ScenarioError
 from frappe_scenario.core.lifecycle import (
 	OPERATIONAL_DEPTHS,
 	derive_lifecycle_counts,
+	forecast_specification_lifecycle,
 	get_depth_profile,
 )
 from frappe_scenario.core.scale import describe_scale_profiles, get_scale_profile
+from frappe_scenario.core.specification import resolve_specification
 from frappe_scenario.core.validation import ValidationResult
+from frappe_scenario.providers.erpnext_buying import _activity_weights as supplier_activity_weights
+from frappe_scenario.providers.erpnext_selling import _activity_weights as customer_activity_weights
 
 pytestmark = pytest.mark.pure
 
@@ -36,6 +41,70 @@ def test_describe_flattens_the_headline_counts_for_the_cli():
 	assert described["smoke"]["customers"] == get_scale_profile("smoke")["parties"]["customers"]
 	assert described["smoke"]["description"]
 	assert described["smoke"]["record_target"]["typical"] == 150
+
+
+def test_medium_and_large_obey_the_advertised_history_windows():
+	medium = get_scale_profile("medium")
+	large = get_scale_profile("large")
+
+	assert medium["history_range"] == [12, 24]
+	assert 12 <= medium["history_months"] <= 24
+	assert large["history_range"] == [24, 36]
+	assert 24 <= large["history_months"] <= 36
+	assert large["confirmation_required"]
+
+
+def test_scale_forecast_is_ratio_driven_and_seasonal():
+	resolved, _ = resolve_specification(
+		{
+			"schema_version": "1.0",
+			"scenario": {
+				"archetype": "hvac_distribution",
+				"country": "Kuwait",
+				"scale": "medium",
+				"anchor_date": "2026-07-31",
+				"seed": 7,
+			},
+		}
+	)
+	forecast = forecast_specification_lifecycle(resolved)
+
+	assert forecast["sales_activities"] > (
+		resolved["operations"]["sales_orders_per_month"] * resolved["scenario"]["history_months"]
+	)
+	assert forecast["sales_orders"] < forecast["sales_activities"]  # cash activity is invoiced directly
+	assert forecast["customer_payments"] < forecast["sales_invoices"]
+	assert forecast["supplier_payments"] < forecast["purchase_invoices"]
+
+
+def test_large_resource_forecast_requires_confirmation_and_estimates_rows():
+	resolved, _ = resolve_specification(
+		{
+			"schema_version": "1.0",
+			"scenario": {
+				"archetype": "hvac_distribution",
+				"country": "Kuwait",
+				"scale": "large",
+				"anchor_date": "2026-07-31",
+				"seed": 7,
+			},
+		}
+	)
+	estimate = estimate_resources(resolved, 25000)
+
+	assert estimate["confirmation_required"]
+	assert estimate["database_rows"] > estimate["documents"]
+	assert estimate["storage_mb"]["minimum"] < estimate["storage_mb"]["maximum"]
+	assert estimate["runtime_minutes"]["minimum"] < estimate["runtime_minutes"]["maximum"]
+	assert estimate["warnings"]
+
+
+def test_concentration_weights_are_bounded_monotonic_and_shared_by_buying_and_selling():
+	assert customer_activity_weights(5, 0.25) == supplier_activity_weights(5, 0.25)
+	weights = customer_activity_weights(5, 0.25)
+	assert weights == sorted(weights, reverse=True)
+	assert weights[-1] == 1
+	assert customer_activity_weights(3, 0) == [1, 1, 1]
 
 
 def test_depth_changes_lifecycle_coverage_without_changing_activity_volume():

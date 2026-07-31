@@ -55,7 +55,7 @@ COST_VARIANCE = 0.05
 
 class ErpnextBuyingProvider(ScenarioProvider):
 	id = "erpnext.buying"
-	version = "0.1.0"
+	version = "0.2.0"
 	title = "ERPNext Buying"
 	description = "Purchase orders, receipts, and invoices linked through ERPNext's own mappers."
 	role = "extender"
@@ -198,7 +198,13 @@ class ErpnextBuyingProvider(ScenarioProvider):
 		context.current_capability = ORDERS
 		for month, count in zip(months, counts, strict=True):
 			for order_date in dates_in_month(random, pack, month, count, not_after=context.anchor_date):
-				supplier = random.choice(suppliers)
+				supplier = random.choices(
+					suppliers,
+					weights=_activity_weights(
+						len(suppliers), float(operations.get("supplier_concentration") or 0)
+					),
+					k=1,
+				)[0]
 				order = self._create_order(
 					context,
 					company=company,
@@ -487,3 +493,10 @@ class ErpnextBuyingProvider(ScenarioProvider):
 					record=invoice["name"],
 				)
 		return result
+
+
+def _activity_weights(count: int, concentration: float) -> list[float]:
+	if count <= 1:
+		return [1.0] * count
+	concentration = min(max(concentration, 0.0), 1.0)
+	return [1.0 + concentration * 4.0 * (1.0 - index / (count - 1)) for index in range(count)]
