@@ -2,11 +2,10 @@
 # For license information, please see license.txt
 """External-agent endpoints.
 
-This app has no model adapters, no credentials, and no outbound calls. An
-external agent asks for the compilation context, compiles a specification
-elsewhere, and submits it back as data. The submitted specification is validated
-like any other untrusted input and cannot generate anything until a person
-approves the draft.
+These remain the model-independent route: an external agent asks for the
+compilation context, compiles elsewhere, and submits data. Built-in adapters do
+not weaken this boundary. Every submitted specification remains untrusted and
+cannot generate anything until a person approves the draft.
 """
 
 from __future__ import annotations

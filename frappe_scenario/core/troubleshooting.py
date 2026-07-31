@@ -130,7 +130,9 @@ def restore_case(case_name: str) -> dict[str, Any]:
 			blockers.append(
 				{
 					"reference": f"{created.doctype}/{created.name}",
-					"message": _("A lab-created draft was submitted or cancelled. Return it to Draft before restoring the lab."),
+					"message": _(
+						"A lab-created draft was submitted or cancelled. Return it to Draft before restoring the lab."
+					),
 				}
 			)
 	if blockers:
@@ -150,7 +152,9 @@ def restore_case(case_name: str) -> dict[str, Any]:
 		doc.save(ignore_permissions=True)
 	for record in reversed(json.loads(doc.created_records or "[]")):
 		if frappe.db.exists(record["doctype"], record["name"]):
-			frappe.delete_doc(record["doctype"], record["name"], ignore_permissions=True, delete_permanently=True)
+			frappe.delete_doc(
+				record["doctype"], record["name"], ignore_permissions=True, delete_permanently=True
+			)
 	doc.status = "Restored"
 	doc.restored_at = now_datetime()
 	doc.save(ignore_permissions=True)
@@ -180,8 +184,12 @@ def _availability(run: Any, problem: dict[str, Any]) -> dict[str, Any]:
 
 def _has_doctype(run: Any, doctype: str) -> tuple[bool, str | None]:
 	manifest = load_manifest(run)
-	available = any(record.doctype == doctype and frappe.db.exists(doctype, record.name) for record in manifest.created())
-	return available, None if available else _("This dataset has no scenario-owned {0} record.").format(doctype)
+	available = any(
+		record.doctype == doctype and frappe.db.exists(doctype, record.name) for record in manifest.created()
+	)
+	return available, None if available else _("This dataset has no scenario-owned {0} record.").format(
+		doctype
+	)
 
 
 def _has_overdue(run: Any) -> tuple[bool, str | None]:
@@ -199,7 +207,9 @@ def _public_problem(problem: dict[str, Any]) -> dict[str, Any]:
 
 
 def _active_case(run_name: str) -> Any | None:
-	name = frappe.db.get_value(CASE_DOCTYPE, {"scenario_run": run_name, "status": ["in", ["Active", "Diagnosed"]]}, "name")
+	name = frappe.db.get_value(
+		CASE_DOCTYPE, {"scenario_run": run_name, "status": ["in", ["Active", "Diagnosed"]]}, "name"
+	)
 	return frappe.get_doc(CASE_DOCTYPE, name) if name else None
 
 
@@ -214,7 +224,9 @@ def _case_payload(doc: Any) -> dict[str, Any]:
 		"status": doc.status,
 		"objective": doc.objective,
 		"choices": json.loads(doc.diagnosis_choices or "[]"),
-		"hints": json.loads(doc.hints or "[]")[: min(int(doc.attempts or 0), len(json.loads(doc.hints or "[]")))],
+		"hints": json.loads(doc.hints or "[]")[
+			: min(int(doc.attempts or 0), len(json.loads(doc.hints or "[]")))
+		],
 		"attempts": int(doc.attempts or 0),
 		"target": {
 			"doctype": doc.target_doctype,
@@ -239,7 +251,9 @@ def _owned_name(run: Any, doctype: str, *, filters: dict[str, Any] | None = None
 	for record in manifest.created():
 		if record.doctype != doctype or not frappe.db.exists(doctype, record.name):
 			continue
-		if not filters or all(frappe.db.get_value(doctype, record.name, field) == value for field, value in filters.items()):
+		if not filters or all(
+			frappe.db.get_value(doctype, record.name, field) == value for field, value in filters.items()
+		):
 			return record.name
 	return None
 
@@ -265,7 +279,13 @@ def _partial_delivery_event(run: Any) -> Any | None:
 		order_by="sequence asc",
 	):
 		doc = frappe.get_doc(event.reference_doctype, event.reference_name)
-		if any(flt(row.qty) < flt(row.so_detail and frappe.db.get_value("Sales Order Item", row.so_detail, "qty") or row.qty) for row in doc.items):
+		if any(
+			flt(row.qty)
+			< flt(
+				(row.so_detail and frappe.db.get_value("Sales Order Item", row.so_detail, "qty")) or row.qty
+			)
+			for row in doc.items
+		):
 			return event
 	return None
 
@@ -273,12 +293,18 @@ def _partial_delivery_event(run: Any) -> Any | None:
 def _observe_overdue(run: Any) -> dict[str, Any]:
 	name = _overdue_invoice(run)
 	due_date, outstanding = frappe.db.get_value("Sales Invoice", name, ["due_date", "outstanding_amount"])
-	return _injection("Sales Invoice", name, evidence={"due_date": due_date, "outstanding_amount": outstanding})
+	return _injection(
+		"Sales Invoice", name, evidence={"due_date": due_date, "outstanding_amount": outstanding}
+	)
 
 
 def _observe_partial_delivery(run: Any) -> dict[str, Any]:
 	event = _partial_delivery_event(run)
-	return _injection(event.reference_doctype, event.reference_name, evidence={"related_documents": json.loads(event.related_documents or "[]")})
+	return _injection(
+		event.reference_doctype,
+		event.reference_name,
+		evidence={"related_documents": json.loads(event.related_documents or "[]")},
+	)
 
 
 def _observe_posting_period(run: Any) -> dict[str, Any]:
@@ -293,7 +319,11 @@ def _low_item_price(run: Any) -> dict[str, Any]:
 	original = doc.price_list_rate
 	doc.price_list_rate = max(0.001, flt(original) * 0.05)
 	doc.save(ignore_permissions=True)
-	return _injection("Item Price", name, changes=[{"doctype": "Item Price", "name": name, "field": "price_list_rate", "original": original}])
+	return _injection(
+		"Item Price",
+		name,
+		changes=[{"doctype": "Item Price", "name": name, "field": "price_list_rate", "original": original}],
+	)
 
 
 def _low_credit_limit(run: Any) -> dict[str, Any]:
@@ -324,9 +354,7 @@ def _low_credit_limit(run: Any) -> dict[str, Any]:
 	return _injection(
 		"Sales Order",
 		order.name,
-		changes=[
-			{"doctype": "Customer", "name": customer, "field": "credit_limits", "original": original}
-		],
+		changes=[{"doctype": "Customer", "name": customer, "field": "credit_limits", "original": original}],
 		created=[{"doctype": "Sales Order", "name": order.name}],
 		evidence={
 			"customer": customer,
@@ -367,14 +395,21 @@ def _draft_sales_order(run: Any, source_name: str, *, quantity_multiplier: float
 
 def _unallocated_payment(run: Any) -> dict[str, Any]:
 	invoice = _overdue_invoice(run) or _owned_name(run, "Sales Invoice")
-	get_payment_entry = frappe.get_attr("erpnext.accounts.doctype.payment_entry.payment_entry.get_payment_entry")
+	get_payment_entry = frappe.get_attr(
+		"erpnext.accounts.doctype.payment_entry.payment_entry.get_payment_entry"
+	)
 	doc = get_payment_entry("Sales Invoice", invoice)
 	doc.references = []
 	doc.posting_date = run.anchor_date
 	doc.reference_no = f"LAB-{invoice}"
 	doc.reference_date = run.anchor_date
 	doc.insert(ignore_permissions=True)
-	return _injection("Payment Entry", doc.name, created=[{"doctype": "Payment Entry", "name": doc.name}], evidence={"invoice": invoice})
+	return _injection(
+		"Payment Entry",
+		doc.name,
+		created=[{"doctype": "Payment Entry", "name": doc.name}],
+		evidence={"invoice": invoice},
+	)
 
 
 def _injection(

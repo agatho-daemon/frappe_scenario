@@ -2,8 +2,8 @@
 # For license information, please see license.txt
 """Whitelisted HTTP surface.
 
-Every endpoint is restricted to System Manager and delegates to
-:mod:`frappe_scenario.core.engine`. Nothing here talks to a model provider; the
-AI endpoints exchange structured data with an external agent and record where
-that data came from.
+Every endpoint is restricted to System Manager. Generation delegates to
+:mod:`frappe_scenario.core.engine`; AI endpoints expose safe adapter metadata or
+exchange structured data with an external agent. No endpoint currently performs
+an outbound model call.
 """

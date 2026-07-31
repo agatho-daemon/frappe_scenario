@@ -1,0 +1,72 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:provider",
+ "creation": "2026-07-31 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "provider",
+  "enabled",
+  "model",
+  "credential",
+  "configuration"
+ ],
+ "fields": [
+  {
+   "fieldname": "provider",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Provider",
+   "reqd": 1,
+   "set_only_once": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enabled"
+  },
+  {
+   "description": "Optional provider model override.",
+   "fieldname": "model",
+   "fieldtype": "Data",
+   "label": "Model"
+  },
+  {
+   "description": "Stored using Frappe's encrypted Password storage. Never returned by Scenario APIs.",
+   "fieldname": "credential",
+   "fieldtype": "Password",
+   "label": "API Credential"
+  },
+  {
+   "description": "Non-secret provider settings only. Secret-like keys are rejected.",
+   "fieldname": "configuration",
+   "fieldtype": "Code",
+   "label": "Public Configuration",
+   "options": "JSON"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Scenario",
+ "name": "Scenario AI Provider",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "provider",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "provider",
+ "track_changes": 1
+}

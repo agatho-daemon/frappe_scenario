@@ -23,6 +23,12 @@ scenario_providers = [
 	"frappe_scenario.providers.erpnext_payments.ErpnextPaymentsProvider",
 ]
 
+# AI adapters translate trusted, structured Scenario inputs into provider
+# requests. They never execute model output or create ERPNext documents.
+scenario_ai_adapters = [
+	"frappe_scenario.ai.openai.OpenAIAdapter",
+]
+
 # Apps
 # ------------------
 

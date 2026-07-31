@@ -152,10 +152,16 @@ Then open `http://<site-name>:8015`. Ensure the site hostname resolves to
 development terminal/session for the server and avoid starting duplicate Bench
 services.
 
-## External-agent workflow
+## AI adapter and external-agent boundary
 
-The app does not call an AI model and stores no model credentials. An external
-agent such as Claude or Codex can:
+The provider-neutral adapter contract currently builds secret-free structured
+requests but does not yet execute outbound model calls. OpenAI is the first
+built-in adapter. Its optional API credential is stored only in the Password
+field of `Scenario AI Provider`, using Frappe's encrypted password storage; it
+is never returned by the adapter-discovery API.
+
+The existing external-agent workflow remains fully supported. An agent such as
+Claude or Codex can:
 
 1. Call `frappe_scenario.api.capabilities.describe_capabilities`.
 2. Call `frappe_scenario.api.agent.compile_brief` to obtain the schema,
@@ -199,8 +205,9 @@ develop. Each compatibility Bench must test the exact same committed revision.
 ## Current boundaries
 
 - Only the smoke-scale HVAC distribution vertical slice is proven end to end.
-- The AI integration is an external-agent contract, not a built-in model
-  adapter.
+- OpenAI adapter discovery, encrypted configuration, and structured request
+  construction are implemented. Built-in execution and AI Brief compilation
+  remain subsequent milestones.
 - No Crispy Print or other third-party app code is modified or imported.
 - HRMS, manufacturing, projects, assets, lending, regional compliance, and
   broader archetypes remain future providers.
