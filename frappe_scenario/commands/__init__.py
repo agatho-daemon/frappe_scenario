@@ -407,13 +407,67 @@ def run_command(
 @click.option("--allow-non-disposable", is_flag=True)
 @pass_context
 def resume_command(context: Any, run_name: str, allow_non_disposable: bool) -> None:
-	"""Continue a failed run from its last successful provider."""
+	"""Continue a failed or cancelled run from its last successful provider."""
 	with _site(context):
 		from frappe_scenario.core import engine
 
 		result = engine.resume_run(run_name, allow_non_disposable=allow_non_disposable)
 
 	_echo_run_result(result)
+
+
+@scenario.command("retry")
+@click.argument("run_name")
+@click.option("--allow-non-disposable", is_flag=True)
+@pass_context
+def retry_command(context: Any, run_name: str, allow_non_disposable: bool) -> None:
+	"""Retry a failed provider phase and continue the run."""
+	with _site(context):
+		from frappe_scenario.core import engine
+
+		result = engine.retry_run(run_name, allow_non_disposable=allow_non_disposable)
+
+	_echo_run_result(result)
+
+
+@scenario.command("cancel")
+@click.argument("run_name")
+@pass_context
+def cancel_command(context: Any, run_name: str) -> None:
+	"""Request cancellation at the next safe provider boundary."""
+	with _site(context):
+		from frappe_scenario.core import engine
+
+		result = engine.request_cancellation(run_name)
+
+	click.echo(f"{result['run_id']}: {result['status']}")
+
+
+@scenario.command("rollback-phase")
+@click.argument("run_name")
+@click.option("--yes", is_flag=True, help="Skip the confirmation prompt.")
+@click.option("--allow-non-disposable", is_flag=True)
+@pass_context
+def rollback_phase_command(context: Any, run_name: str, yes: bool, allow_non_disposable: bool) -> None:
+	"""Remove the last committed phase from a failed or cancelled run."""
+	with _site(context):
+		from frappe_scenario.core import engine
+
+		if not yes:
+			click.confirm(f"Roll back the last committed provider phase of {run_name}?", abort=True)
+		result = engine.rollback_last_phase(run_name, allow_non_disposable=allow_non_disposable)
+
+	colour = "green" if result["rolled_back"] else "yellow"
+	click.echo(
+		click.style(
+			f"{result['run_id']}: phase {result['provider']} "
+			f"{'rolled back' if result['rolled_back'] else 'blocked'}",
+			fg=colour,
+			bold=True,
+		)
+	)
+	if not result["rolled_back"]:
+		raise click.exceptions.Exit(1)
 
 
 @scenario.command("status")

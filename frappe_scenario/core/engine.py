@@ -17,6 +17,7 @@ Execution model:
 from __future__ import annotations
 
 import datetime
+import hashlib
 import json
 import time
 import traceback
@@ -48,6 +49,8 @@ MANIFEST_FILENAME = "manifest.jsonl"
 STATUS_DRAFT = "Draft"
 STATUS_QUEUED = "Queued"
 STATUS_RUNNING = "Running"
+STATUS_CANCELLATION_REQUESTED = "Cancellation Requested"
+STATUS_CANCELLED = "Cancelled"
 STATUS_COMPLETED = "Completed"
 STATUS_FAILED = "Failed"
 STATUS_CLEANED = "Cleaned Up"
@@ -227,7 +230,7 @@ def enqueue_run(run_name: str, *, allow_non_disposable: bool = False) -> dict[st
 	return {"run_id": run_name, "status": STATUS_QUEUED, "job_id": getattr(job, "id", None)}
 
 
-def _assert_runnable(run: Any, *, allow_non_disposable: bool) -> None:
+def _assert_runnable(run: Any, *, allow_non_disposable: bool, accept_queued: bool = False) -> None:
 	assert_safe_to_generate(allow_non_disposable=allow_non_disposable)
 	if not run.approved:
 		raise ScenarioError(
@@ -235,7 +238,10 @@ def _assert_runnable(run: Any, *, allow_non_disposable: bool) -> None:
 			phase="run",
 			details={"run_id": run.name},
 		)
-	if run.status in (STATUS_RUNNING, STATUS_QUEUED):
+	active = {STATUS_RUNNING, STATUS_CANCELLATION_REQUESTED}
+	if not accept_queued:
+		active.add(STATUS_QUEUED)
+	if run.status in active:
 		raise ScenarioError(
 			f"Run {run.name} is already {run.status.lower()}.",
 			phase="run",
@@ -246,6 +252,12 @@ def _assert_runnable(run: Any, *, allow_non_disposable: bool) -> None:
 			f"Run {run.name} has been cleaned up and cannot be re-executed.",
 			phase="run",
 			details={"run_id": run.name},
+		)
+	if run.status in (STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED):
+		raise ScenarioError(
+			f"Run {run.name} cannot start from status {run.status!r}; use resume or retry where applicable.",
+			phase="run",
+			details={"run_id": run.name, "status": run.status},
 		)
 
 	stored_hash = specification_hash(json.loads(run.specification))
@@ -266,7 +278,13 @@ def execute_run(
 	"""Execute (or resume) a run. Safe to call synchronously or from a worker."""
 	run = frappe.get_doc(RUN_DOCTYPE, run_name)
 	if not resume:
-		_assert_runnable(run, allow_non_disposable=allow_non_disposable)
+		if run.status == STATUS_CANCELLED:
+			return {"run_id": run.name, "status": STATUS_CANCELLED, "record_count": run.record_count or 0}
+		_assert_runnable(
+			run,
+			allow_non_disposable=allow_non_disposable,
+			accept_queued=True,
+		)
 	else:
 		assert_safe_to_generate(allow_non_disposable=allow_non_disposable)
 
@@ -283,23 +301,44 @@ def execute_run(
 
 	completed = {step.provider for step in run.steps if step.status == "Completed"} if resume else set()
 
+	if resume:
+		run.db_set("cancellation_requested", 0, update_modified=False)
 	run.db_set("status", STATUS_RUNNING, update_modified=False)
 	run.db_set("started_at", now_datetime(), update_modified=False)
 	run.db_set("error", None, update_modified=False)
 	frappe.db.commit()
 
 	failure: dict[str, Any] | None = None
+	cancelled = False
 
 	for index, provider in enumerate(graph.order):
 		if provider.id in completed:
 			continue
+		if _cancellation_requested(run.name):
+			cancelled = True
+			break
 
 		step = _step_for(run, provider.id)
 		savepoint = f"scn_{index}"
 		checkpoint = len(manifest) - 1
+		capabilities_before = _serialisable(context.published_capabilities)
+		input_fingerprint = phase_input_fingerprint(
+			provider_id=provider.id,
+			provider_version=provider.version,
+			specification_hash_value=run.specification_hash,
+			capabilities=capabilities_before,
+		)
 		started = time.perf_counter()
 
-		_update_step(run, step, status="Running", started_at=now_datetime())
+		_update_step(
+			run,
+			step,
+			status="Running",
+			started_at=now_datetime(),
+			attempts=int(step.attempts or 0) + 1,
+			manifest_start_sequence=checkpoint,
+			input_fingerprint=input_fingerprint,
+		)
 		frappe.db.commit()
 
 		frappe.db.savepoint(savepoint)
@@ -322,6 +361,8 @@ def execute_run(
 			)
 			break
 
+		capabilities_after = _serialisable(context.published_capabilities)
+		phase_records = manifest.records[checkpoint + 1 :]
 		_update_step(
 			run,
 			step,
@@ -335,6 +376,13 @@ def execute_run(
 				1 for record in manifest.records[checkpoint + 1 :] if record.operation == "modified"
 			),
 			checkpoint_sequence=len(manifest) - 1,
+			output_fingerprint=phase_output_fingerprint(
+				provider_id=provider.id,
+				result={"summary": result.summary, "warnings": result.warnings},
+				capabilities=capabilities_after,
+				records=[record.as_dict() for record in phase_records],
+			),
+			capability_snapshot=json.dumps(capabilities_after, indent="\t", default=str),
 			warnings=json.dumps(result.warnings, default=str) if result.warnings else None,
 			summary=json.dumps(result.summary, indent="\t", default=str) if result.summary else None,
 		)
@@ -347,8 +395,11 @@ def execute_run(
 			update_modified=False,
 		)
 		frappe.db.commit()
+		if _cancellation_requested(run.name):
+			cancelled = True
+			break
 
-	if not failure:
+	if not failure and not cancelled:
 		# Backdated documents leave ERPNext work queued for a background worker.
 		# Settle it here so a completed run is consistent on its own terms.
 		try:
@@ -376,13 +427,19 @@ def execute_run(
 	run.db_set("warnings", json.dumps(context.warnings, indent="\t", default=str), update_modified=False)
 	run.db_set("finished_at", now_datetime(), update_modified=False)
 
-	if failure:
-		run.db_set("status", STATUS_FAILED, update_modified=False)
-		run.db_set("error", json.dumps(failure, indent="\t", default=str), update_modified=False)
+	if failure or cancelled:
+		status = STATUS_CANCELLED if cancelled else STATUS_FAILED
+		run.db_set("status", status, update_modified=False)
+		run.db_set("cancellation_requested", 0, update_modified=False)
+		run.db_set(
+			"error",
+			json.dumps(failure, indent="\t", default=str) if failure else None,
+			update_modified=False,
+		)
 		frappe.db.commit()
 		return {
 			"run_id": run.name,
-			"status": STATUS_FAILED,
+			"status": status,
 			"record_count": len(manifest.created()),
 			"error": failure,
 			"manifest": manifest_summary,
@@ -427,12 +484,146 @@ def execute_run(
 
 def resume_run(run_name: str, *, allow_non_disposable: bool = False) -> dict[str, Any]:
 	run = frappe.get_doc(RUN_DOCTYPE, run_name)
-	if run.status != STATUS_FAILED:
+	if run.status not in (STATUS_FAILED, STATUS_CANCELLED):
 		raise ScenarioError(
-			f"Only failed runs can be resumed. Run {run_name} is {run.status!r}.",
+			f"Only failed or cancelled runs can be resumed. Run {run_name} is {run.status!r}.",
 			phase="resume",
 		)
 	return execute_run(run_name, allow_non_disposable=allow_non_disposable, resume=True)
+
+
+def retry_run(run_name: str, *, allow_non_disposable: bool = False) -> dict[str, Any]:
+	"""Retry the failed phase and then resume at the same durable boundary."""
+	run = frappe.get_doc(RUN_DOCTYPE, run_name)
+	if run.status != STATUS_FAILED:
+		raise ScenarioError(
+			f"Only failed runs can be retried. Run {run_name} is {run.status!r}.",
+			phase="retry",
+		)
+	return execute_run(run_name, allow_non_disposable=allow_non_disposable, resume=True)
+
+
+def request_cancellation(run_name: str) -> dict[str, Any]:
+	"""Request a cooperative stop; the engine honours it at a provider boundary."""
+	run = frappe.get_doc(RUN_DOCTYPE, run_name)
+	if run.status not in (STATUS_QUEUED, STATUS_RUNNING, STATUS_CANCELLATION_REQUESTED):
+		raise ScenarioError(
+			f"Run {run_name} cannot be cancelled from status {run.status!r}.",
+			phase="cancel",
+		)
+	if run.status == STATUS_QUEUED:
+		# No phase has started, so cancellation is already at a safe boundary.
+		run.db_set("cancellation_requested", 0, update_modified=False)
+		run.db_set("status", STATUS_CANCELLED, update_modified=False)
+		status = STATUS_CANCELLED
+	else:
+		run.db_set("cancellation_requested", 1, update_modified=False)
+		run.db_set("status", STATUS_CANCELLATION_REQUESTED, update_modified=False)
+		status = STATUS_CANCELLATION_REQUESTED
+	frappe.db.commit()
+	return {"run_id": run.name, "status": status}
+
+
+def _cancellation_requested(run_name: str) -> bool:
+	return bool(frappe.db.get_value(RUN_DOCTYPE, run_name, "cancellation_requested"))
+
+
+def rollback_last_phase(run_name: str, *, allow_non_disposable: bool = False) -> dict[str, Any]:
+	"""Remove the last committed provider phase and leave the run resumable."""
+	assert_safe_to_generate(allow_non_disposable=allow_non_disposable)
+	run = frappe.get_doc(RUN_DOCTYPE, run_name)
+	if run.status not in (STATUS_FAILED, STATUS_CANCELLED):
+		raise ScenarioError(
+			"Phase rollback is available only for a failed or cancelled run.",
+			phase="rollback_phase",
+		)
+	completed = [step for step in run.steps if step.status == "Completed"]
+	if not completed:
+		raise ScenarioError("This run has no committed phase to roll back.", phase="rollback_phase")
+	step = completed[-1]
+	manifest = load_manifest(run)
+	start = int(step.manifest_start_sequence if step.manifest_start_sequence is not None else -1)
+	end = int(step.checkpoint_sequence if step.checkpoint_sequence is not None else -1)
+	records = [record for record in manifest if start < record.sequence <= end]
+	provider = discover_providers().get(step.provider)
+	context = ScenarioContext(run_id=run.name, specification=json.loads(run.specification), manifest=manifest)
+	context.current_provider = provider.id
+	result = provider.cleanup(context, records)
+	frappe.db.commit()
+	if result.blockers:
+		return {
+			"run_id": run.name,
+			"status": STATUS_FAILED,
+			"provider": provider.id,
+			"rolled_back": False,
+			"result": result.as_dict(),
+		}
+	manifest.truncate_after(start)
+	_persist_manifest(run, manifest)
+	previous = completed[-2] if len(completed) > 1 else None
+	capabilities = previous.capability_snapshot if previous else "{}"
+	run.db_set("published_capabilities", capabilities or "{}", update_modified=False)
+	_reset_step(step)
+	for later in run.steps:
+		if later.idx > step.idx and later.status == "Failed":
+			_reset_step(later)
+	run.db_set("status", STATUS_FAILED, update_modified=False)
+	run.db_set("error", None, update_modified=False)
+	frappe.db.commit()
+	return {
+		"run_id": run.name,
+		"status": STATUS_FAILED,
+		"provider": provider.id,
+		"rolled_back": True,
+		"result": result.as_dict(),
+	}
+
+
+def _reset_step(step: Any) -> None:
+	for fieldname, value in {
+		"status": "Pending",
+		"started_at": None,
+		"finished_at": None,
+		"duration_ms": 0,
+		"created_count": 0,
+		"modified_count": 0,
+		"manifest_start_sequence": -1,
+		"checkpoint_sequence": -1,
+		"input_fingerprint": None,
+		"output_fingerprint": None,
+		"capability_snapshot": None,
+		"summary": None,
+		"warnings": None,
+		"error": None,
+	}.items():
+		frappe.db.set_value(step.doctype, step.name, fieldname, value, update_modified=False)
+		step.set(fieldname, value)
+
+
+def _fingerprint(payload: dict[str, Any]) -> str:
+	encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode()
+	return hashlib.sha256(encoded).hexdigest()
+
+
+def phase_input_fingerprint(
+	*, provider_id: str, provider_version: str, specification_hash_value: str, capabilities: dict[str, Any]
+) -> str:
+	return _fingerprint(
+		{
+			"provider": provider_id,
+			"provider_version": provider_version,
+			"specification_hash": specification_hash_value,
+			"capabilities": capabilities,
+		}
+	)
+
+
+def phase_output_fingerprint(
+	*, provider_id: str, result: dict[str, Any], capabilities: dict[str, Any], records: list[dict[str, Any]]
+) -> str:
+	return _fingerprint(
+		{"provider": provider_id, "result": result, "capabilities": capabilities, "records": records}
+	)
 
 
 def _describe_failure(provider: ScenarioProvider, exception: Exception) -> dict[str, Any]:
@@ -555,6 +746,7 @@ def get_status(run_name: str) -> dict[str, Any]:
 		"run_id": run.name,
 		"title": run.title,
 		"status": run.status,
+		"cancellation_requested": bool(run.cancellation_requested),
 		"approved": bool(run.approved),
 		"archetype": run.archetype,
 		"scale": run.scale,
@@ -568,6 +760,13 @@ def get_status(run_name: str) -> dict[str, Any]:
 		"structural_hash": run.structural_hash,
 		"record_count": run.record_count,
 		"estimated_records": run.estimated_records,
+		"progress": {
+			"completed_phases": sum(step.status == "Completed" for step in run.steps),
+			"total_phases": len(run.steps),
+			"current_phase": next(
+				(step.provider for step in run.steps if step.status in ("Running", "Failed")), None
+			),
+		},
 		"started_at": str(run.started_at) if run.started_at else None,
 		"finished_at": str(run.finished_at) if run.finished_at else None,
 		"manifest_file": run.manifest_file,
@@ -587,6 +786,9 @@ def get_status(run_name: str) -> dict[str, Any]:
 				"modified": step.modified_count,
 				"duration_ms": step.duration_ms,
 				"checkpoint_sequence": step.checkpoint_sequence,
+				"attempts": step.attempts,
+				"input_fingerprint": step.input_fingerprint,
+				"output_fingerprint": step.output_fingerprint,
 				"error": json.loads(step.error) if step.error else None,
 			}
 			for step in run.steps

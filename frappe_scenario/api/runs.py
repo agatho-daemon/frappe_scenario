@@ -70,6 +70,24 @@ def resume(run_name: str) -> dict[str, Any]:
 
 
 @frappe.whitelist()
+def retry(run_name: str) -> dict[str, Any]:
+	frappe.only_for(ROLE)
+	return engine.retry_run(run_name)
+
+
+@frappe.whitelist()
+def cancel(run_name: str) -> dict[str, Any]:
+	frappe.only_for(ROLE)
+	return engine.request_cancellation(run_name)
+
+
+@frappe.whitelist()
+def rollback_phase(run_name: str) -> dict[str, Any]:
+	frappe.only_for(ROLE)
+	return engine.rollback_last_phase(run_name)
+
+
+@frappe.whitelist()
 def get_status(run_name: str) -> dict[str, Any]:
 	frappe.only_for(ROLE)
 	return engine.get_status(run_name)

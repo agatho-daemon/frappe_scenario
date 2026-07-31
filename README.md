@@ -138,6 +138,24 @@ bench scenario cleanup SCN-RUN-YYYY-NNNNN
 Pass `--background` to `scenario run` to enqueue generation on the long queue.
 The Bench worker must be running before using background mode.
 
+Long runs commit after each provider phase. `status` reports completed/total
+phases, the active phase, attempt counts, and the stable input/output
+fingerprints for every checkpoint. Recovery commands are:
+
+```bash
+bench scenario cancel SCN-RUN-YYYY-NNNNN
+bench scenario resume SCN-RUN-YYYY-NNNNN
+bench scenario retry SCN-RUN-YYYY-NNNNN
+bench scenario rollback-phase SCN-RUN-YYYY-NNNNN
+```
+
+Cancellation is cooperative and takes effect only between provider phases, so
+an indivisible ERPNext transaction is never stopped halfway through. `resume`
+continues a failed or cancelled run; `retry` is the explicit failed-phase form.
+`rollback-phase` is deliberately limited to the latest committed phase of a
+failed or cancelled run, then leaves it ready to resume. Full `cleanup` remains
+available at every supported scale and consults only the ownership manifest.
+
 ### Inspecting another development site
 
 `bench start` serves the Bench default site. To inspect a different site without

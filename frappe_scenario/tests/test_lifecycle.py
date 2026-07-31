@@ -12,6 +12,7 @@ import datetime
 
 import pytest
 
+from frappe_scenario.core import engine
 from frappe_scenario.core.canonical import canonical_projection
 from frappe_scenario.core.engine import (
 	cleanup_run,
@@ -65,6 +66,58 @@ def _generate(specification: dict) -> dict:
 	result = execute_run(run_name)
 	assert result["status"] == "Completed", result.get("error")
 	return result
+
+
+def test_cancel_rollback_and_resume_at_provider_boundaries(erpnext_site, smoke_specification, monkeypatch):
+	"""A committed phase can be inspected, removed, retried, and completed."""
+	run_name = create_run(smoke_specification, approved=True)
+	checks = 0
+
+	def cancel_after_first_checkpoint(_run_name):
+		nonlocal checks
+		checks += 1
+		return checks >= 2
+
+	monkeypatch.setattr(engine, "_cancellation_requested", cancel_after_first_checkpoint)
+	cancelled = execute_run(run_name)
+	assert cancelled["status"] == "Cancelled"
+	status = engine.get_status(run_name)
+	assert status["progress"] == {
+		"completed_phases": 1,
+		"total_phases": len(status["steps"]),
+		"current_phase": None,
+	}
+	assert status["steps"][0]["input_fingerprint"]
+	assert status["steps"][0]["output_fingerprint"]
+
+	rolled_back = engine.rollback_last_phase(run_name)
+	assert rolled_back["rolled_back"]
+	assert rolled_back["result"]["blockers"] == []
+
+	# Restore the real database-backed cancellation check before resuming.
+	monkeypatch.undo()
+	completed = engine.resume_run(run_name)
+	assert completed["status"] == "Completed", completed.get("error")
+	status = engine.get_status(run_name)
+	assert status["progress"]["completed_phases"] == status["progress"]["total_phases"]
+	assert all(step["input_fingerprint"] and step["output_fingerprint"] for step in status["steps"])
+
+	cleanup = cleanup_run(run_name)
+	assert cleanup["status"] == "Cleaned Up"
+	assert cleanup["blockers"] == []
+
+
+def test_a_queued_run_cancels_before_any_provider_starts(erpnext_site, smoke_specification):
+	import frappe
+
+	run_name = create_run(smoke_specification, approved=True)
+	frappe.db.set_value("Scenario Run", run_name, "status", "Queued", update_modified=False)
+	frappe.db.commit()
+
+	assert engine.request_cancellation(run_name)["status"] == "Cancelled"
+	assert execute_run(run_name)["status"] == "Cancelled"
+	assert load_manifest(run_name).records == []
+	assert cleanup_run(run_name)["status"] == "Cleaned Up"
 
 
 @pytest.fixture(scope="module")

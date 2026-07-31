@@ -13,12 +13,17 @@
   "created_count",
   "modified_count",
   "checkpoint_sequence",
+  "manifest_start_sequence",
+  "attempts",
   "section_timing",
   "started_at",
   "finished_at",
   "column_break_timing",
   "duration_ms",
   "section_detail",
+  "input_fingerprint",
+  "output_fingerprint",
+  "capability_snapshot",
   "summary",
   "warnings",
   "error"
@@ -76,6 +81,21 @@
    "read_only": 1
   },
   {
+   "default": "-1",
+   "description": "Manifest sequence immediately before this provider phase began.",
+   "fieldname": "manifest_start_sequence",
+   "fieldtype": "Int",
+   "label": "Manifest Start Sequence",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "attempts",
+   "fieldtype": "Int",
+   "label": "Attempts",
+   "read_only": 1
+  },
+  {
    "fieldname": "section_timing",
    "fieldtype": "Section Break",
    "label": "Timing"
@@ -108,6 +128,25 @@
    "fieldname": "section_detail",
    "fieldtype": "Section Break",
    "label": "Detail"
+  },
+  {
+   "fieldname": "input_fingerprint",
+   "fieldtype": "Data",
+   "label": "Input Fingerprint",
+   "read_only": 1
+  },
+  {
+   "fieldname": "output_fingerprint",
+   "fieldtype": "Data",
+   "label": "Output Fingerprint",
+   "read_only": 1
+  },
+  {
+   "fieldname": "capability_snapshot",
+   "fieldtype": "Code",
+   "label": "Capability Snapshot",
+   "options": "JSON",
+   "read_only": 1
   },
   {
    "fieldname": "summary",

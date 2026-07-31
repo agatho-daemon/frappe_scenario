@@ -12,6 +12,7 @@
   "scenario_definition",
   "column_break_header",
   "status",
+  "cancellation_requested",
   "approved",
   "approved_by",
   "section_scenario",
@@ -89,7 +90,15 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Draft\nQueued\nRunning\nCompleted\nFailed\nCleaned Up",
+   "options": "Draft\nQueued\nRunning\nCancellation Requested\nCancelled\nCompleted\nFailed\nCleaned Up",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "description": "Cooperative cancellation is honoured between provider phases.",
+   "fieldname": "cancellation_requested",
+   "fieldtype": "Check",
+   "label": "Cancellation Requested",
    "read_only": 1
   },
   {
