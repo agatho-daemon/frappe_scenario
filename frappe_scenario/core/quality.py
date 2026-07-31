@@ -132,7 +132,9 @@ def assess_generated(
 			for finding in name_findings(name or ""):
 				findings.append(_finding("naming", finding.severity, finding.message, name))
 	for entry in capabilities.get("erpnext.catalog.items") or []:
-		for finding in name_findings(entry.get("item_name") or entry.get("name") or "", allow_legal_form=False):
+		for finding in name_findings(
+			entry.get("item_name") or entry.get("name") or "", allow_legal_form=False
+		):
 			findings.append(_finding("naming", finding.severity, finding.message, entry.get("name")))
 
 	sales = capabilities.get("erpnext.selling.sales_invoices") or []

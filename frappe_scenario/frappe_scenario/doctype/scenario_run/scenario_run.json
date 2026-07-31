@@ -46,6 +46,7 @@
   "error",
   "outcome_summary",
   "quality_report",
+  "event_count",
   "section_fingerprint",
   "canonical_hash",
   "structural_hash",
@@ -305,6 +306,12 @@
    "fieldtype": "Link",
    "label": "Quality Report",
    "options": "Scenario Quality Report",
+   "read_only": 1
+  },
+  {
+   "fieldname": "event_count",
+   "fieldtype": "Int",
+   "label": "Narrative Events",
    "read_only": 1
   },
   {

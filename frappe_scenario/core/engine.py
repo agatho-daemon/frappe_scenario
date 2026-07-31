@@ -402,6 +402,9 @@ def execute_run(
 
 	outcomes = build_outcome_summary(context)
 	run.db_set("outcome_summary", json.dumps(outcomes, indent="\t", default=str), update_modified=False)
+	from frappe_scenario.core.narrative import build_scenario_events
+
+	events = build_scenario_events(run, context.published_capabilities)
 	run.db_set("status", STATUS_COMPLETED, update_modified=False)
 	frappe.db.commit()
 
@@ -414,6 +417,7 @@ def execute_run(
 		"canonical_hash": canonical["hash"],
 		"structural_hash": structural,
 		"outcomes": outcomes,
+		"event_count": len(events),
 		"warnings": context.warnings,
 	}
 
@@ -568,6 +572,7 @@ def get_status(run_name: str) -> dict[str, Any]:
 		"validation_summary": json.loads(run.validation_summary or "{}"),
 		"outcomes": json.loads(run.outcome_summary or "{}"),
 		"quality_report": run.quality_report,
+		"event_count": run.event_count,
 		"warnings": json.loads(run.warnings or "[]"),
 		"error": json.loads(run.error) if run.error else None,
 		"steps": [
@@ -705,6 +710,11 @@ def cleanup_run(run_name: str, *, allow_non_disposable: bool = False) -> dict[st
 	# A validation finding points at the document it was raised against, so the
 	# run's own findings would otherwise hold that document in place.
 	_discard_validation_results(run.name)
+	# Narrative events use a Dynamic Link to their source ERPNext document.
+	# Remove them before cleanup so the explanatory layer cannot pin business data.
+	from frappe_scenario.core.narrative import discard_scenario_events
+
+	discard_scenario_events(run.name)
 
 	# Reverse dependency order: the last provider to write is the first to clean.
 	for provider in reversed(graph.order):

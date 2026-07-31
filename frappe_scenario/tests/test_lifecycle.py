@@ -22,6 +22,7 @@ from frappe_scenario.core.engine import (
 	plan,
 	validate_run,
 )
+from frappe_scenario.core.narrative import explain_record
 
 pytestmark = pytest.mark.erpnext_site
 
@@ -163,6 +164,42 @@ def test_completed_run_exposes_report_ready_outcomes(generated):
 	assert generated["outcomes"]["reports"]
 
 
+def test_completed_run_has_a_chronological_story_linked_to_real_documents(generated):
+	import frappe
+
+	events = frappe.get_all(
+		"Scenario Event",
+		filters={"scenario_run": generated["run_id"]},
+		fields=[
+			"name",
+			"sequence",
+			"event_date",
+			"reference_doctype",
+			"reference_name",
+			"previous_event",
+			"next_event",
+		],
+		order_by="sequence asc",
+	)
+	assert len(events) == generated["event_count"] > 0
+	assert [event.sequence for event in events] == list(range(1, len(events) + 1))
+	assert [event.event_date for event in events] == sorted(event.event_date for event in events)
+	assert events[0].previous_event is None
+	assert events[-1].next_event is None
+	assert all(frappe.db.exists(event.reference_doctype, event.reference_name) for event in events)
+
+	explanation = explain_record(
+		generated["run_id"],
+		events[0].reference_doctype,
+		events[0].reference_name,
+	)
+	assert explanation["event"]["why"]
+	assert explanation["event"]["operational_effect"]
+	assert explanation["event"]["ledger_effect"]
+	assert explanation["event"]["stock_effect"]
+	assert explanation["event"]["cancellation_consequence"]
+
+
 def test_validation_findings_carry_enough_to_act_on(generated):
 	for issue in validate_run(generated["run_id"])["issues"]:
 		assert issue["rule"]
@@ -236,7 +273,7 @@ def test_the_same_seed_reproduces_the_same_dataset(erpnext_site, smoke_specifica
 		assert cleanup_run(second["run_id"])["blockers"] == []
 
 
-@pytest.mark.parametrize("doctype", ["Company", "Customer", "Supplier", "Item", "GL Entry"])
+@pytest.mark.parametrize("doctype", ["Company", "Customer", "Supplier", "Item", "GL Entry", "Scenario Event"])
 def test_cleanup_leaves_nothing_behind(generated, doctype):
 	"""Runs after the determinism test, by which point both runs are cleaned."""
 	import frappe

@@ -229,7 +229,13 @@ class ErpnextOpeningProvider(ScenarioProvider):
 			logical_id="opening_capital",
 		)
 		context.progress(f"Posted opening capital of {amount}.")
-		return {"journal_entry": doc.name, "amount": amount, "bank": bank, "equity": equity}
+		return {
+			"journal_entry": doc.name,
+			"amount": amount,
+			"bank": bank,
+			"equity": equity,
+			"posting_date": context.start_date.isoformat(),
+		}
 
 	# -- validation ----------------------------------------------------------
 	def validate(self, context: ScenarioContext) -> ValidationResult:

@@ -88,9 +88,7 @@ def test_generated_linkage_and_continuity_are_scored():
 			"erpnext.selling.sales_invoices": [
 				{"name": "SINV-1", "posting_date": "2026-07-01", "channel": "credit"}
 			],
-			"erpnext.buying.purchase_invoices": [
-				{"name": "PINV-1", "posting_date": "2026-07-02"}
-			],
+			"erpnext.buying.purchase_invoices": [{"name": "PINV-1", "posting_date": "2026-07-02"}],
 		},
 		validation={"issues": []},
 	)

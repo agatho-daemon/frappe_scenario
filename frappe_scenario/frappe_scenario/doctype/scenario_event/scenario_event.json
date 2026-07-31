@@ -1,0 +1,182 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "SCN-EVT-.#####",
+ "creation": "2026-07-31 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "scenario_run",
+  "sequence",
+  "event_date",
+  "event_type",
+  "title",
+  "section_reference",
+  "reference_doctype",
+  "reference_name",
+  "related_documents",
+  "column_break_neighbors",
+  "previous_event",
+  "next_event",
+  "section_explanation",
+  "summary",
+  "why",
+  "operational_effect",
+  "ledger_effect",
+  "stock_effect",
+  "cancellation_consequence"
+ ],
+ "fields": [
+  {
+   "fieldname": "scenario_run",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scenario Run",
+   "options": "Scenario Run",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sequence",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Sequence",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "event_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Event Date",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "event_type",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Event Type",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_reference",
+   "fieldtype": "Section Break",
+   "label": "ERPNext Evidence"
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reference Document Type",
+   "options": "DocType",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Document",
+   "options": "reference_doctype",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "related_documents",
+   "fieldtype": "Code",
+   "label": "Related Documents",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_neighbors",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "previous_event",
+   "fieldtype": "Link",
+   "label": "Previous Event",
+   "options": "Scenario Event",
+   "read_only": 1
+  },
+  {
+   "fieldname": "next_event",
+   "fieldtype": "Link",
+   "label": "Next Event",
+   "options": "Scenario Event",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_explanation",
+   "fieldtype": "Section Break",
+   "label": "Explanation"
+  },
+  {
+   "fieldname": "summary",
+   "fieldtype": "Small Text",
+   "label": "Summary",
+   "read_only": 1
+  },
+  {
+   "fieldname": "why",
+   "fieldtype": "Small Text",
+   "label": "Why It Exists",
+   "read_only": 1
+  },
+  {
+   "fieldname": "operational_effect",
+   "fieldtype": "Small Text",
+   "label": "Operational Effect",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ledger_effect",
+   "fieldtype": "Small Text",
+   "label": "Ledger Effect",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_effect",
+   "fieldtype": "Small Text",
+   "label": "Stock Effect",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cancellation_consequence",
+   "fieldtype": "Small Text",
+   "label": "Cancellation or Return Consequence",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Scenario",
+ "name": "Scenario Event",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "delete": 1,
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager"
+  }
+ ],
+ "search_fields": "title,event_type,reference_name",
+ "sort_field": "sequence",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "title"
+}
