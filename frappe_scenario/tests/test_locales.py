@@ -52,6 +52,11 @@ def test_email_addresses_are_always_ascii():
 	assert address.count("@") == 1
 
 
+def test_country_pack_refuses_non_reserved_email_domains():
+	with pytest.raises(ValueError, match=r"\.example"):
+		_pack(email_domain_suffix="invalid.test")
+
+
 def test_the_weekend_decides_which_days_are_working_days():
 	# Friday and Saturday, as in much of the Gulf.
 	pack = _pack(weekend_days=(4, 5))

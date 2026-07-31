@@ -22,6 +22,7 @@ from frappe_scenario.core.lifecycle import (
 )
 from frappe_scenario.core.onboarding import DOCTYPE, json_fields, transition_onboarding
 from frappe_scenario.core.preflight import BLOCKING, preflight_report
+from frappe_scenario.core.realism_preview import representative_preview
 from frappe_scenario.core.scale import get_scale_profile
 from frappe_scenario.locales import describe_country_packs
 
@@ -102,6 +103,7 @@ def default_choices(report: dict[str, Any]) -> dict[str, Any]:
 		"cost_center_name": "Main",
 		"scale": "smoke",
 		"history_months": get_scale_profile("smoke")["history_months"],
+		"preview_variation": 0,
 	}
 
 
@@ -209,6 +211,12 @@ def validate_choices(choices: dict[str, Any]) -> dict[str, Any]:
 		frappe.throw(_("History must be a whole number of months."), frappe.ValidationError)
 	if not 1 <= resolved["history_months"] <= 60:
 		frappe.throw(_("History must be between 1 and 60 months."), frappe.ValidationError)
+	try:
+		resolved["preview_variation"] = int(resolved.get("preview_variation") or 0)
+	except (TypeError, ValueError):
+		frappe.throw(_("Preview variation must be a whole number."), frappe.ValidationError)
+	if not 0 <= resolved["preview_variation"] <= 1000:
+		frappe.throw(_("Preview variation must be between 0 and 1000."), frappe.ValidationError)
 	if isinstance(resolved["perpetual_inventory"], str):
 		resolved["perpetual_inventory"] = resolved["perpetual_inventory"].strip().lower() in {
 			"1",
@@ -448,6 +456,7 @@ def build_proposal(choices: dict[str, Any], report: dict[str, Any]) -> dict[str,
 		"mutations": mutations,
 		"mutation_count": len(mutations),
 		"record_estimate": estimate_records(choices),
+		"representative_samples": representative_preview(choices),
 		"blockers": blockers,
 		"warnings": _proposal_warnings(choices, report),
 		"approvable": not blockers,

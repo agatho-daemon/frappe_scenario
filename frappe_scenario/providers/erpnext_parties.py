@@ -26,7 +26,8 @@ from frappe_scenario.core.provider import (
 )
 from frappe_scenario.core.validation import ValidationResult
 from frappe_scenario.providers.erpnext_foundation import COMPANY, PAYMENT_TERMS
-from frappe_scenario.providers.support.naming import party_name, person_name, slugify, unique_name
+from frappe_scenario.providers.support.naming import slugify, unique_name
+from frappe_scenario.providers.support.realism import RealismPipeline
 
 GROUPS = "erpnext.parties.groups"
 CUSTOMERS = "erpnext.parties.customers"
@@ -246,6 +247,14 @@ class ErpnextPartiesProvider(ScenarioProvider):
 		random = context.random("customers")
 		primary = context.faker("customers", context.locale)
 		secondary = context.faker("customers_secondary", context.secondary_locale)
+		realism = RealismPipeline(
+			random=random,
+			primary_faker=primary,
+			secondary_faker=secondary,
+			country_pack=context.country_pack,
+			archetype=context.archetype,
+			primary_share=float(options.get("primary_locale_share", 0.6)),
+		)
 		terms = context.require(PAYMENT_TERMS)
 
 		count = int(parties.get("customers") or 0)
@@ -259,9 +268,7 @@ class ErpnextPartiesProvider(ScenarioProvider):
 		for segment in sorted(allocation):
 			for _ in range(allocation[segment]):
 				index += 1
-				base = party_name(
-					random, primary, secondary, primary_share=float(options.get("primary_locale_share", 0.6))
-				)
+				base = realism.business_name()
 				name = unique_name(base, taken)
 				while frappe.db.exists("Customer", name):
 					name = unique_name(base, taken)
@@ -295,7 +302,7 @@ class ErpnextPartiesProvider(ScenarioProvider):
 				)
 
 				self._attach_address_and_contact(
-					context, doc.doctype, doc.name, name, random, primary, options
+					context, doc.doctype, doc.name, name, random, realism, options
 				)
 
 				customers.append(
@@ -320,6 +327,14 @@ class ErpnextPartiesProvider(ScenarioProvider):
 		random = context.random("suppliers")
 		primary = context.faker("suppliers", context.locale)
 		secondary = context.faker("suppliers_secondary", context.secondary_locale)
+		realism = RealismPipeline(
+			random=random,
+			primary_faker=primary,
+			secondary_faker=secondary,
+			country_pack=context.country_pack,
+			archetype=context.archetype,
+			primary_share=float(options.get("primary_locale_share", 0.6)),
+		)
 		terms = context.require(PAYMENT_TERMS)
 
 		count = int(parties.get("suppliers") or 0)
@@ -327,9 +342,7 @@ class ErpnextPartiesProvider(ScenarioProvider):
 		suppliers: list[dict[str, Any]] = []
 
 		for index in range(1, count + 1):
-			base = party_name(
-				random, primary, secondary, primary_share=float(options.get("primary_locale_share", 0.6))
-			)
+			base = realism.business_name()
 			name = unique_name(base, taken)
 			while frappe.db.exists("Supplier", name):
 				name = unique_name(base, taken)
@@ -348,7 +361,7 @@ class ErpnextPartiesProvider(ScenarioProvider):
 				logical_id=f"supplier:{index:04d}",
 			)
 
-			self._attach_address_and_contact(context, doc.doctype, doc.name, name, random, primary, options)
+			self._attach_address_and_contact(context, doc.doctype, doc.name, name, random, realism, options)
 
 			suppliers.append(
 				{
@@ -374,12 +387,19 @@ class ErpnextPartiesProvider(ScenarioProvider):
 		random = context.random("leads")
 		primary = context.faker("leads", context.locale)
 		secondary = context.faker("leads_secondary", context.secondary_locale)
+		realism = RealismPipeline(
+			random=random,
+			primary_faker=primary,
+			secondary_faker=secondary,
+			country_pack=context.country_pack,
+			archetype=context.archetype,
+		)
 		pack = context.country_pack
 
 		leads: list[str] = []
 		for index in range(1, count + 1):
-			organisation = party_name(random, primary, secondary)
-			first, last = person_name(primary)
+			organisation = realism.business_name()
+			first, last = realism.person_name(primary)
 			doc = context.insert(
 				{
 					"doctype": "Lead",
@@ -407,13 +427,13 @@ class ErpnextPartiesProvider(ScenarioProvider):
 		link_name: str,
 		display_name: str,
 		random: Any,
-		faker: Any,
+		realism: RealismPipeline,
 		options: dict[str, Any],
 	) -> None:
 		pack = context.country_pack
 
 		if options.get("create_addresses", True):
-			address = pack.address(random, faker)
+			address = realism.address()
 			context.insert(
 				{
 					"doctype": "Address",
@@ -431,7 +451,7 @@ class ErpnextPartiesProvider(ScenarioProvider):
 			)
 
 		if options.get("create_contacts", True):
-			first, last = person_name(faker)
+			first, last = realism.person_name()
 			context.insert(
 				{
 					"doctype": "Contact",

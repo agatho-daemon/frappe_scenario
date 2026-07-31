@@ -28,7 +28,7 @@ from frappe_scenario.core.provider import (
 from frappe_scenario.core.validation import ValidationResult
 from frappe_scenario.providers.erpnext_foundation import ACCOUNTS, COMPANY
 from frappe_scenario.providers.support import erpnext_tools as tools
-from frappe_scenario.providers.support.naming import item_code, item_name
+from frappe_scenario.providers.support.naming import item_code, item_description, item_name
 from frappe_scenario.providers.support.pricing import margin_for_item, purchase_cost, selling_rate
 
 WAREHOUSES = "erpnext.catalog.warehouses"
@@ -284,12 +284,13 @@ class ErpnextCatalogProvider(ScenarioProvider):
 				margin = margin_for_item(random, archetype, family, context.specification)
 				rate = selling_rate(cost, margin, precision)
 				code = item_code(family, sequence)
+				name = item_name(random, family)[:140]
 
 				doc = context.insert(
 					{
 						"doctype": "Item",
 						"item_code": code,
-						"item_name": item_name(random, family)[:140],
+						"item_name": name,
 						"item_group": item_groups[family.item_group],
 						"stock_uom": family.uom,
 						"is_stock_item": 1 if family.is_stock_item else 0,
@@ -299,7 +300,7 @@ class ErpnextCatalogProvider(ScenarioProvider):
 						"lead_time_days": random.randint(*family.lead_time_days)
 						if family.lead_time_days[1]
 						else 0,
-						"description": f"{family.title} supplied for scenario testing.",
+						"description": item_description(family, name),
 						"item_defaults": [
 							{
 								"company": company,

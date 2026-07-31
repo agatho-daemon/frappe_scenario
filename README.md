@@ -82,6 +82,14 @@ Depth controls lifecycle coverage—how many orders progress to fulfillment,
 invoicing, and payment. Existing `scenario-1.0` specifications remain valid;
 missing purpose and depth default to `Quick Demo` and `Everyday Business`.
 
+Party and catalog previews use a deterministic realism pipeline. Seeded Faker
+provides name primitives, while the selected country pack and business
+archetype provide legal forms, commercial vocabulary, address shape, telephone
+format, product terminology, and price bands. Visibly synthetic or awkward
+combinations are rejected before insertion, and all generated e-mail addresses
+remain under reserved `.example` domains. “New sample variation” changes only
+the preview variation; saving unchanged choices reproduces the same samples.
+
 ## Quick start
 
 Scenario commands use the Bench default site configured by `bench use`.

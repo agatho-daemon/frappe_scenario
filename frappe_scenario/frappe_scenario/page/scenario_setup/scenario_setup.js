@@ -12,6 +12,7 @@ class ScenarioSetupWizard {
 		this.body = $('<div class="scenario-setup-wizard">').appendTo(this.page.main);
 		this.page.set_primary_action(__("Save and Preview"), () => this.save_and_preview());
 		this.page.add_inner_button(__("Refresh"), () => this.load());
+		this.page.add_inner_button(__("New sample variation"), () => this.save_and_preview(true));
 		this.load();
 	}
 
@@ -132,6 +133,49 @@ class ScenarioSetupWizard {
 			</section>
 		`).appendTo(this.body);
 		const mutations = section.find(".scenario-mutations");
+		const samples = proposal.representative_samples;
+		$(`
+			<div class="scenario-samples mb-4">
+				<h5>${__("Representative data")}</h5>
+				<p><strong>${__("Parties")}:</strong> ${samples.parties
+			.map((party) => frappe.utils.escape_html(party.name))
+			.join(", ")}</p>
+				<p><strong>${__("Products")}:</strong> ${samples.products
+			.map(
+				(product) =>
+					`${frappe.utils.escape_html(product.name)} (${format_currency(
+						product.selling_price,
+						product.currency
+					)})`
+			)
+			.join(", ")}</p>
+				<p><strong>${__("Sample contact")}:</strong> ${frappe.utils.escape_html(
+			`${samples.parties[0].contact}, ${samples.parties[0].email}, ${samples.parties[0].phone}`
+		)}</p>
+				<p><strong>${__("Sample address")}:</strong> ${frappe.utils.escape_html(
+			[
+				samples.parties[0].address.address_line1,
+				samples.parties[0].address.address_line2,
+				samples.parties[0].address.city,
+				samples.parties[0].address.country,
+			]
+				.filter(Boolean)
+				.join(", ")
+		)}</p>
+				<p><strong>${__("Transaction story")}:</strong> ${frappe.utils.escape_html(
+			`${samples.transaction_stories[0].customer} — ${
+				samples.transaction_stories[0].quantity
+			} × ${samples.transaction_stories[0].item} — ${format_currency(
+				samples.transaction_stories[0].order_value,
+				samples.transaction_stories[0].currency
+			)}`
+		)}</p>
+				<p class="text-muted">${__("Preview variation {0}; deterministic quality: {1}", [
+					samples.variation,
+					samples.quality.passed ? __("passed") : __("needs review"),
+				])}</p>
+			</div>
+		`).appendTo(section);
 		if (!proposal.mutations.length) {
 			mutations.append(
 				`<p class="text-muted">${__("No ERPNext setup changes proposed.")}</p>`
@@ -182,10 +226,13 @@ class ScenarioSetupWizard {
 		}
 	}
 
-	async save_and_preview() {
-		const choices = {};
+	async save_and_preview(new_variation = false) {
+		const choices = { ...this.model.choices };
 		for (const [fieldname, control] of Object.entries(this.controls)) {
 			choices[fieldname] = control.get_value();
+		}
+		if (new_variation) {
+			choices.preview_variation = Number(choices.preview_variation || 0) + 1;
 		}
 		const response = await frappe.call({
 			method: "frappe_scenario.api.onboarding.save_wizard_choices",

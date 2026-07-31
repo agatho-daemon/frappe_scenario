@@ -587,6 +587,7 @@ def _prompt_setup_choices(model: dict[str, Any]) -> dict[str, Any]:
 			type=click.Choice(["smoke", "small", "medium", "large", "custom"]),
 			default=default_scale,
 		),
+		"preview_variation": int(defaults.get("preview_variation") or 0),
 	}
 	scale_defaults = {
 		"smoke": 2,

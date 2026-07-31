@@ -69,6 +69,16 @@ class CountryPack:
 
 	#: Non-regulatory: purely a naming convention for generated company names.
 	company_suffix: str = "Trading LLC"
+	legal_forms: tuple[str, ...] = ("LLC", "Ltd.")
+	business_words: tuple[str, ...] = (
+		"Northwind",
+		"Vertex",
+		"Summit",
+		"Harbor",
+		"Crescent",
+		"Meridian",
+		"Anchor",
+	)
 
 	#: Telephone conventions. Numbers are synthetic and never dialable ranges we
 	#: assert to be real.
@@ -84,6 +94,10 @@ class CountryPack:
 
 	#: Extra specification defaults contributed by this pack.
 	extra_defaults: dict[str, Any] = field(default_factory=dict)
+
+	def __post_init__(self) -> None:
+		if self.email_domain_suffix != "example":
+			raise ValueError("Synthetic e-mail domains must use the reserved .example suffix.")
 
 	# -- working week --------------------------------------------------------
 	@property
@@ -142,8 +156,7 @@ class CountryPack:
 
 	def company_name(self, random: Any) -> str:
 		"""A plausible trading name for the scenario company."""
-		words = ("Northwind", "Vertex", "Summit", "Harbor", "Crescent", "Meridian", "Anchor")
-		return f"{random.choice(list(words))} {self.company_suffix}"
+		return f"{random.choice(list(self.business_words))} {self.company_suffix}"
 
 	# -- specification defaults ---------------------------------------------
 	def specification_defaults(self) -> dict[str, Any]:
@@ -166,6 +179,8 @@ class CountryPack:
 			"chart_of_accounts": self.chart_of_accounts,
 			"phone_country_code": self.phone_country_code,
 			"email_domain_suffix": self.email_domain_suffix,
+			"legal_forms": list(self.legal_forms),
+			"business_words": list(self.business_words),
 			"regions": list(self.regions),
 			"localities": list(self.localities),
 		}
