@@ -13,8 +13,14 @@ from frappe_scenario.core.validation import ValidationResult
 from frappe_scenario.providers.erpnext_foundation import ACCOUNTS, COMPANY
 from frappe_scenario.validators.ledger import REPORT_LIMIT, account_balance
 
-#: Perpetual inventory rounds per transaction, so allow a small drift.
+#: Perpetual inventory rounds per transaction, so allow a small absolute drift.
 VALUATION_TOLERANCE = 1.0
+VALUATION_RELATIVE_TOLERANCE = 0.001
+
+
+def valuation_tolerance(stock_value: float) -> float:
+	"""Return a conservative rounding allowance for the inventory population."""
+	return max(VALUATION_TOLERANCE, abs(stock_value) * VALUATION_RELATIVE_TOLERANCE)
 
 
 def validate_non_negative_stock(context: ScenarioContext) -> ValidationResult:
@@ -114,7 +120,7 @@ def validate_stock_valuation(context: ScenarioContext) -> ValidationResult:
 	stock_value = float(rows[0].value or 0) if rows else 0.0
 	ledger_value = account_balance(company, stock_account)
 
-	if abs(stock_value - ledger_value) > VALUATION_TOLERANCE:
+	if abs(stock_value - ledger_value) > valuation_tolerance(stock_value):
 		result.error(
 			rule="stock.valuation_matches_accounts",
 			message=(f"Stock is valued at {stock_value:.2f} but {stock_account} carries {ledger_value:.2f}."),

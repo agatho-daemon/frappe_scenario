@@ -17,8 +17,15 @@ from frappe_scenario.core.specification import resolve_specification
 from frappe_scenario.core.validation import ValidationResult
 from frappe_scenario.providers.erpnext_buying import _activity_weights as supplier_activity_weights
 from frappe_scenario.providers.erpnext_selling import _activity_weights as customer_activity_weights
+from frappe_scenario.validators.stock import valuation_tolerance
 
 pytestmark = pytest.mark.pure
+
+
+def test_stock_valuation_tolerance_is_strict_but_scales_with_inventory_value():
+	assert valuation_tolerance(500) == 1.0
+	assert valuation_tolerance(5_000) == 5.0
+	assert valuation_tolerance(-12_000) == 12.0
 
 
 def test_every_advertised_profile_can_be_fetched():

@@ -17,7 +17,7 @@ from collections.abc import Callable
 
 from frappe_scenario.core.context import ScenarioContext
 from frappe_scenario.core.validation import ValidationResult
-from frappe_scenario.validators import documents, ledger, plausibility, stock
+from frappe_scenario.validators import archetype, documents, ledger, plausibility, stock
 
 Validator = Callable[[ScenarioContext], ValidationResult]
 
@@ -25,6 +25,7 @@ Validator = Callable[[ScenarioContext], ValidationResult]
 def core_validators() -> list[Validator]:
 	"""Every core validator, in the order results should be reported."""
 	return [
+		archetype.validate_archetype_contract,
 		ledger.validate_vouchers_balanced,
 		ledger.validate_trial_balance,
 		ledger.validate_control_accounts_have_parties,

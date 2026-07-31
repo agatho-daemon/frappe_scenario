@@ -12,6 +12,7 @@ import datetime
 
 import pytest
 
+from frappe_scenario.archetypes import get_archetype
 from frappe_scenario.core import engine
 from frappe_scenario.core.canonical import canonical_projection
 from frappe_scenario.core.engine import (
@@ -183,6 +184,50 @@ def test_realistic_scale_plans_match_their_volume_contract(erpnext_site, scale, 
 	assert described["resource_estimate"]["database_rows"] > described["estimated_records"]
 	assert described["confirmation_required"] is confirmation
 	assert described["resource_estimate"]["lifecycle"]["customer_payments"] > 0
+
+
+@pytest.mark.parametrize(
+	("archetype_id", "seed"),
+	[
+		("general_trading", 101),
+		("distribution_wholesale", 102),
+		("retail", 103),
+		("professional_services", 104),
+	],
+)
+def test_every_newly_advertised_archetype_passes_its_real_lifecycle(erpnext_site, archetype_id, seed):
+	import json
+
+	import frappe
+
+	archetype = get_archetype(archetype_id)
+	run_name = create_run(
+		{
+			"schema_version": "1.0",
+			"scenario": {
+				"archetype": archetype_id,
+				"scale": "smoke",
+				"anchor_date": "2026-01-31",
+				"seed": seed,
+			},
+		},
+		approved=True,
+	)
+	try:
+		generated = execute_run(run_name)
+		assert generated["status"] == "Completed", generated.get("error")
+		validation = validate_run(run_name)
+		assert validation["counts"]["error"] == 0, [
+			issue for issue in validation["issues"] if issue["severity"] == "error"
+		]
+		capabilities = json.loads(
+			frappe.db.get_value("Scenario Run", run_name, "published_capabilities") or "{}"
+		)
+		assert all(capabilities.get(capability) for capability in archetype.required_capabilities)
+	finally:
+		cleanup = cleanup_run(run_name)
+		assert cleanup["blockers"] == []
+		assert cleanup["status"] == "Cleaned Up"
 
 
 def test_a_generated_scenario_records_everything_it_created(generated):

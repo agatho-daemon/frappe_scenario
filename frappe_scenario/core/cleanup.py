@@ -44,6 +44,55 @@ _CANCEL_PRIORITY = {
 }
 
 
+def discard_owned_deferred_work(records: list[ManifestRecord]) -> list[dict[str, Any]]:
+	"""Remove spent repost documents that refer only to this manifest's data.
+
+	A worker can finish a repost after generation has already failed. Such a
+	document is not inserted by Scenario itself, so it is not a manifest record,
+	but it can still pin an owned Item, Warehouse, voucher, and Company. Scope is
+	therefore established from the repost's actual references, never merely from
+	the company name.
+	"""
+	if not frappe.db.exists("DocType", "Repost Item Valuation"):
+		return []
+
+	owned = {(record.doctype, record.name) for record in records if record.operation == "created"}
+	blockers: list[dict[str, Any]] = []
+	for repost in frappe.get_all(
+		"Repost Item Valuation",
+		fields=["name", "based_on", "voucher_type", "voucher_no", "item_code", "warehouse"],
+		filters={"status": ["in", ["Completed", "Failed"]]},
+		limit_page_length=0,
+	):
+		if repost.based_on == "Transaction":
+			is_owned = (repost.voucher_type, repost.voucher_no) in owned
+		else:
+			is_owned = ("Item", repost.item_code) in owned and ("Warehouse", repost.warehouse) in owned
+		if not is_owned:
+			continue
+		try:
+			doc = frappe.get_doc("Repost Item Valuation", repost.name)
+			doc.flags.ignore_permissions = True
+			if doc.docstatus == 1:
+				doc.cancel()
+			frappe.delete_doc(
+				"Repost Item Valuation",
+				repost.name,
+				ignore_permissions=True,
+				delete_permanently=True,
+			)
+		except Exception as exception:
+			blockers.append(
+				{
+					"doctype": "Repost Item Valuation",
+					"name": repost.name,
+					"phase": "cleanup",
+					"message": f"Could not remove owned deferred work: {exception}",
+				}
+			)
+	return blockers
+
+
 def _linked_documents(doctype: str, name: str) -> list[dict[str, str]]:
 	"""Return documents linking to this record, using Frappe's own link resolver."""
 	from frappe.desk.form.linked_with import get_linked_docs, get_linked_doctypes

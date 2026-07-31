@@ -39,7 +39,7 @@ ITEMS = "erpnext.catalog.items"
 
 class ErpnextCatalogProvider(ScenarioProvider):
 	id = "erpnext.catalog"
-	version = "0.1.0"
+	version = "0.2.0"
 	title = "ERPNext Catalog"
 	description = "Warehouses, item groups, items, price lists, and cost-derived selling prices."
 	role = "provider"
@@ -167,6 +167,7 @@ class ErpnextCatalogProvider(ScenarioProvider):
 			)
 
 		abbr = tools.company_abbr(company)
+		stock_account = (context.require(ACCOUNTS) or {}).get("stock_in_hand")
 		created: dict[str, str] = {}
 		for entry in context.section("company").get("warehouses") or []:
 			title = entry.get("title") or entry["type"].replace("_", " ").title()
@@ -174,14 +175,17 @@ class ErpnextCatalogProvider(ScenarioProvider):
 			if frappe.db.exists("Warehouse", full_name):
 				created[entry["type"]] = full_name
 				continue
+			payload = {
+				"doctype": "Warehouse",
+				"warehouse_name": title,
+				"parent_warehouse": root,
+				"company": company,
+				"is_group": 0,
+			}
+			if stock_account and context.adapter.has_field("Warehouse", "account"):
+				payload["account"] = stock_account
 			doc = context.insert(
-				{
-					"doctype": "Warehouse",
-					"warehouse_name": title,
-					"parent_warehouse": root,
-					"company": company,
-					"is_group": 0,
-				},
+				payload,
 				capability=WAREHOUSES,
 				logical_id=f"warehouse:{entry['type']}",
 			)
@@ -199,6 +203,12 @@ class ErpnextCatalogProvider(ScenarioProvider):
 				capability=WAREHOUSES,
 				phase="generate",
 			)
+		# ERPNext memoizes the warehouse-account map in process-local flags. A
+		# provider may have read it while the warehouse tree was still incomplete,
+		# so invalidate only this company's entry before stock posting begins.
+		warehouse_account_map = getattr(frappe.flags, "warehouse_account_map", None)
+		if isinstance(warehouse_account_map, dict):
+			warehouse_account_map.pop(company, None)
 		return {"default": default, "by_type": created, "all": sorted(set(created.values()) | {default})}
 
 	# -- item groups ---------------------------------------------------------

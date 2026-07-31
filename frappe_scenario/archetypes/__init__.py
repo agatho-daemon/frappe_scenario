@@ -31,6 +31,11 @@ HOOK_NAME = "scenario_archetypes"
 _BUILTIN = (
 	"frappe_scenario.archetypes.hvac_distribution.ARCHETYPE",
 	"frappe_scenario.archetypes.general_trading.ARCHETYPE",
+	"frappe_scenario.archetypes.distribution_wholesale.ARCHETYPE",
+	"frappe_scenario.archetypes.retail.ARCHETYPE",
+	"frappe_scenario.archetypes.professional_services.ARCHETYPE",
+	"frappe_scenario.archetypes.manufacturing.ARCHETYPE",
+	"frappe_scenario.archetypes.construction_contracting.ARCHETYPE",
 )
 
 _DOTTED_PATH = re.compile(r"^[a-zA-Z_][\w.]*$")
@@ -82,7 +87,7 @@ def _registry() -> dict[str, Archetype]:
 	return registry
 
 
-def get_archetype(archetype_id: str) -> Archetype:
+def get_archetype(archetype_id: str, *, include_unavailable: bool = False) -> Archetype:
 	registry = _registry()
 	if archetype_id not in registry:
 		raise SpecificationError(
@@ -90,12 +95,25 @@ def get_archetype(archetype_id: str) -> Archetype:
 			phase="resolve",
 			details={"available": sorted(registry)},
 		)
-	return registry[archetype_id]
+	archetype = registry[archetype_id]
+	if not include_unavailable and not archetype.lifecycle_validated:
+		raise SpecificationError(
+			f"Archetype {archetype_id!r} is not available: {archetype.unavailable_reason}",
+			phase="resolve",
+			details={"archetype": archetype_id, "reason": archetype.unavailable_reason},
+		)
+	return archetype
 
 
-def list_archetypes() -> list[str]:
-	return sorted(_registry())
+def list_archetypes(*, include_unavailable: bool = False) -> list[str]:
+	return sorted(
+		key for key, archetype in _registry().items() if include_unavailable or archetype.lifecycle_validated
+	)
 
 
-def describe_archetypes() -> list[dict[str, Any]]:
-	return [archetype.describe() for _, archetype in sorted(_registry().items())]
+def describe_archetypes(*, include_unavailable: bool = False) -> list[dict[str, Any]]:
+	return [
+		archetype.describe()
+		for _, archetype in sorted(_registry().items())
+		if include_unavailable or archetype.lifecycle_validated
+	]

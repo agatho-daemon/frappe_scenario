@@ -93,6 +93,25 @@ class Archetype:
 	cash_sales_ratio: float = 0.2
 	gross_margin_range: tuple[float, float] = (0.15, 0.45)
 	uoms: list[str] = field(default_factory=list)
+	supported_modules: tuple[str, ...] = ()
+	operational_ratios: dict[str, Any] = field(default_factory=dict)
+	learning_paths: tuple[str, ...] = ()
+	validation_expectations: tuple[str, ...] = ()
+	required_capabilities: tuple[str, ...] = ()
+	lifecycle_validated: bool = False
+	unavailable_reason: str | None = None
+
+	def __post_init__(self) -> None:
+		if not self.families:
+			raise SpecificationError(f"Archetype {self.id!r} must declare item families.")
+		if self.lifecycle_validated and self.unavailable_reason:
+			raise SpecificationError(f"Ready archetype {self.id!r} cannot declare an unavailable reason.")
+		if self.lifecycle_validated and not all(
+			(self.supported_modules, self.learning_paths, self.validation_expectations)
+		):
+			raise SpecificationError(
+				f"Ready archetype {self.id!r} must declare modules, lessons, and validation expectations."
+			)
 
 	# -- lookup --------------------------------------------------------------
 	def family(self, key: str) -> ItemFamily:
@@ -146,6 +165,7 @@ class Archetype:
 					"peak_months": list(self.peak_months),
 					"peak_multiplier": self.peak_multiplier,
 				},
+				**dict(self.operational_ratios),
 			},
 		}
 
@@ -164,4 +184,12 @@ class Archetype:
 			"peak_months": list(self.peak_months),
 			"peak_multiplier": self.peak_multiplier,
 			"uoms": list(self.uoms),
+			"supported_modules": list(self.supported_modules),
+			"operational_ratios": dict(self.operational_ratios),
+			"learning_paths": list(self.learning_paths),
+			"validation_expectations": list(self.validation_expectations),
+			"required_capabilities": list(self.required_capabilities),
+			"lifecycle_validated": self.lifecycle_validated,
+			"available": self.lifecycle_validated,
+			"unavailable_reason": self.unavailable_reason,
 		}

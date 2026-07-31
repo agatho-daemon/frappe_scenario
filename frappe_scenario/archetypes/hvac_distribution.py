@@ -268,4 +268,15 @@ ARCHETYPE = Archetype(
 	cash_sales_ratio=0.25,
 	gross_margin_range=(0.08, 0.70),
 	uoms=["Nos", "Meter", "Kg", "Litre", "Box", "Hour", "Set"],
+	supported_modules=("CRM", "Selling", "Buying", "Stock", "Accounts"),
+	operational_ratios={"returns": 0.08},
+	learning_paths=("crm-parties", "buying", "selling", "stock", "payments", "returns"),
+	validation_expectations=("balanced_books", "stock_integrity", "document_links", "regional_consistency"),
+	required_capabilities=(
+		"erpnext.commercial.crm",
+		"erpnext.buying.purchase_invoices",
+		"erpnext.selling.sales_invoices",
+		"erpnext.commercial.stock_transfers",
+	),
+	lifecycle_validated=True,
 )

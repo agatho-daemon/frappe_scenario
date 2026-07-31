@@ -90,6 +90,21 @@ combinations are rejected before insertion, and all generated e-mail addresses
 remain under reserved `.example` domains. “New sample variation” changes only
 the preview variation; saving unchanged choices reproduces the same samples.
 
+## Business archetypes
+
+Scenario advertises only archetypes whose complete smoke lifecycle has passed
+against real ERPNext controllers. The current catalogue is HVAC Distribution,
+General Trading, Distribution and Wholesale, Retail, and Professional
+Services. Each archetype declares its supported modules, regional vocabulary,
+operational ratios, learning paths, validation expectations, and required
+provider capabilities.
+
+Manufacturing and Construction/Project Contracting already have declarative
+vocabulary and acceptance contracts, but remain deliberately hidden and cannot
+be selected until their optional operational providers pass the same lifecycle
+gate. Capability discovery and AI compilation therefore cannot promise an
+archetype that the generation engine does not yet support.
+
 ## Quick start
 
 Scenario commands use the Bench default site configured by `bench use`.
@@ -312,15 +327,18 @@ develop. Each compatibility Bench must test the exact same committed revision.
 
 ## Current boundaries
 
-- The HVAC distribution lifecycle is proven end to end at smoke scale; medium
-  and large profiles have deterministic volume and resource-planning coverage.
+- HVAC Distribution, General Trading, Distribution and Wholesale, Retail, and
+  Professional Services are lifecycle-validated at smoke scale. Medium and
+  large profiles have deterministic volume and resource-planning coverage.
 - OpenAI adapter discovery, encrypted configuration, structured request
   execution, reviewable AI Brief compilation, and human-approved qualitative
   plausibility review are implemented. The grounded tutor is implemented as a
   read-only, citation-validated learning workflow.
 - No Crispy Print or other third-party app code is modified or imported.
-- HRMS, manufacturing, projects, assets, lending, regional compliance, and
-  broader archetypes remain future providers.
+- HRMS, manufacturing, projects, assets, lending, and regional compliance
+  remain future optional providers. Manufacturing and Construction/Project
+  Contracting archetypes stay unpublished until those providers pass their
+  declared acceptance contracts.
 
 ## License
 

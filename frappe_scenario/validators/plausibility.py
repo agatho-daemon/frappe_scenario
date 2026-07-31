@@ -70,14 +70,27 @@ def validate_activity_present(context: ScenarioContext) -> ValidationResult:
 	result = ValidationResult()
 	operations = context.section("operations")
 
+	archetype_modules = set(context.archetype.supported_modules)
 	expectations = (
-		("operations.sales_orders_per_month", SALES_ORDERS, "Sales Order"),
-		("operations.purchase_orders_per_month", PURCHASE_ORDERS, "Purchase Order"),
+		(
+			"operations.sales_orders_per_month",
+			SALES_ORDERS,
+			"Sales Order",
+			context.optional(SALES_INVOICES) or [],
+			"Selling" in archetype_modules,
+		),
+		(
+			"operations.purchase_orders_per_month",
+			PURCHASE_ORDERS,
+			"Purchase Order",
+			[],
+			"Buying" in archetype_modules,
+		),
 	)
-	for path, capability, doctype in expectations:
+	for path, capability, doctype, alternate_activity, module_supported in expectations:
 		requested = int(operations.get(path.rsplit(".", 1)[-1]) or 0)
 		produced = len(context.optional(capability) or [])
-		if requested > 0 and produced == 0:
+		if requested > 0 and module_supported and produced == 0 and not alternate_activity:
 			result.error(
 				rule="plausibility.activity_present",
 				message=f"{path} asked for {requested} per month but no {doctype} was created.",

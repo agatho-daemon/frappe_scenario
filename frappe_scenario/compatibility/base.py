@@ -9,6 +9,7 @@ supported branch. Version adapters override only what genuinely differs.
 from __future__ import annotations
 
 import importlib
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -93,31 +94,41 @@ class CompatibilityAdapter:
 
 		from erpnext.stock.doctype.repost_item_valuation.repost_item_valuation import repost
 
-		pending = frappe.get_all(
-			"Repost Item Valuation",
-			filters={"status": ["in", ["Queued", "In Progress"]]},
-			pluck="name",
-			order_by="creation asc",
-		)
-
 		processed: list[str] = []
+		seen: set[str] = set()
 		failed: list[dict[str, Any]] = []
-		for name in pending:
-			repost(frappe.get_doc("Repost Item Valuation", name))
-			# ``repost`` records the outcome on the document rather than raising, so
-			# the status is the only way to tell a real failure from a success.
-			status = frappe.db.get_value("Repost Item Valuation", name, "status")
-			if status == "Completed":
-				processed.append(name)
-			else:
-				failed.append({"name": name, "status": status})
-
-		if failed:
-			raise CompatibilityError(
-				f"{len(failed)} of {len(pending)} item valuation reposts did not complete.",
-				phase="generate",
-				details={"failed": failed, "adapter": self.id},
+		# One repost can enqueue or unblock another. Drain the bounded dependency
+		# chain instead of treating an intermediate Queued state as a failure.
+		for _attempt in range(10):
+			pending = frappe.get_all(
+				"Repost Item Valuation",
+				filters={"status": ["in", ["Queued", "In Progress"]]},
+				pluck="name",
+				order_by="creation asc",
 			)
+			if not pending:
+				failed = []
+				break
+			seen.update(pending)
+			for name in pending:
+				# A live Bench worker may already own an In Progress repost. Calling
+				# repost concurrently would race the same stock ledger rows.
+				if frappe.db.get_value("Repost Item Valuation", name, "status") == "Queued":
+					repost(frappe.get_doc("Repost Item Valuation", name))
+			failed = [
+				{"name": name, "status": frappe.db.get_value("Repost Item Valuation", name, "status")}
+				for name in pending
+				if frappe.db.get_value("Repost Item Valuation", name, "status") != "Completed"
+			]
+			if not failed:
+				continue
+			time.sleep(0.1)
+
+		processed = sorted(
+			name
+			for name in seen
+			if frappe.db.get_value("Repost Item Valuation", name, "status") == "Completed"
+		)
 
 		for name in processed:
 			# A completed repost is spent bookkeeping, but it still links to the
@@ -129,6 +140,13 @@ class CompatibilityAdapter:
 			if doc.docstatus == 1:
 				doc.cancel()
 			frappe.delete_doc("Repost Item Valuation", name, ignore_permissions=True, delete_permanently=True)
+
+		if failed:
+			raise CompatibilityError(
+				f"{len(failed)} of {len(seen)} item valuation reposts did not complete.",
+				phase="generate",
+				details={"failed": failed, "adapter": self.id},
+			)
 
 		return {"processed": processed, "failed": failed}
 

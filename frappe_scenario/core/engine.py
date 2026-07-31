@@ -942,6 +942,15 @@ def cleanup_run(run_name: str, *, allow_non_disposable: bool = False) -> dict[st
 
 	discard_scenario_events(run.name)
 
+	# A worker may finish (or fail) a valuation repost after generation failed.
+	# Remove only reposts whose voucher, or item-and-warehouse pair, is owned by
+	# this manifest before those non-manifest bookkeeping records pin its data.
+	from frappe_scenario.core.cleanup import discard_owned_deferred_work
+
+	deferred_blockers = discard_owned_deferred_work(list(manifest))
+	if deferred_blockers:
+		blockers.extend(deferred_blockers)
+
 	# Reverse dependency order: the last provider to write is the first to clean.
 	for provider in reversed(graph.order):
 		records = manifest.for_provider(provider.id)
