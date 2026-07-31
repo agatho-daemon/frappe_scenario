@@ -39,7 +39,7 @@ ITEMS = "erpnext.catalog.items"
 
 class ErpnextCatalogProvider(ScenarioProvider):
 	id = "erpnext.catalog"
-	version = "0.2.0"
+	version = "0.3.0"
 	title = "ERPNext Catalog"
 	description = "Warehouses, item groups, items, price lists, and cost-derived selling prices."
 	role = "provider"
@@ -279,6 +279,7 @@ class ErpnextCatalogProvider(ScenarioProvider):
 		pack = context.country_pack
 		archetype = context.archetype
 		precision = pack.currency_precision
+		company_namespace = tools.company_abbr(company)
 
 		families = archetype.selected_families(context.specification)
 		counts = _allocate_items(random, families, int(context.section("catalog").get("item_count") or 0))
@@ -293,7 +294,7 @@ class ErpnextCatalogProvider(ScenarioProvider):
 				cost = purchase_cost(random, family, pack.price_scale, precision)
 				margin = margin_for_item(random, archetype, family, context.specification)
 				rate = selling_rate(cost, margin, precision)
-				code = item_code(family, sequence)
+				code = item_code(family, sequence, namespace=company_namespace)
 				name = item_name(random, family)[:140]
 
 				doc = context.insert(

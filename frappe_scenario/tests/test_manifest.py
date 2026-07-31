@@ -4,9 +4,15 @@
 
 import pytest
 
+from frappe_scenario.core.engine import _manifest_filename
 from frappe_scenario.core.manifest import Manifest, ManifestRecord
 
 pytestmark = pytest.mark.pure
+
+
+def test_each_run_gets_a_distinct_physical_manifest_filename():
+	assert _manifest_filename("SCN-RUN-1") != _manifest_filename("SCN-RUN-2")
+	assert _manifest_filename("SCN-RUN-1").endswith("-manifest.jsonl")
 
 
 def _record(doctype: str, name: str, provider: str = "erpnext.selling", **kwargs) -> ManifestRecord:

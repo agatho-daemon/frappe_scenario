@@ -1,0 +1,60 @@
+.scenario-presentation {
+	--scenario-primary: #0f766e;
+	--scenario-accent: #14b8a6;
+	--scenario-surface: #ecfdf5;
+	max-width: 1200px;
+	padding: 1.5rem;
+}
+
+.scenario-presentation-hero {
+	align-items: center;
+	background: linear-gradient(135deg, var(--scenario-surface), var(--card-bg));
+	border: 1px solid var(--border-color);
+	border-radius: 18px;
+	display: flex;
+	gap: 1.5rem;
+	padding: 2rem;
+}
+
+.scenario-presentation-logo {
+	flex: 0 0 96px;
+}
+
+.scenario-presentation-logo svg {
+	display: block;
+	width: 96px;
+}
+
+.scenario-presentation-grid {
+	display: grid;
+	gap: 1rem;
+	grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+	margin: 1.5rem 0;
+}
+
+.scenario-presentation-metric,
+.scenario-presentation-section {
+	background: var(--card-bg);
+	border: 1px solid var(--border-color);
+	border-radius: var(--border-radius-lg);
+	padding: 1.25rem;
+}
+
+.scenario-presentation-value {
+	color: var(--scenario-primary);
+	font-size: 1.75rem;
+	font-weight: 700;
+}
+
+.scenario-presentation-tour-step {
+	border-left: 3px solid var(--scenario-accent);
+	margin-bottom: 1rem;
+	padding-left: 1rem;
+}
+
+.scenario-presentation-secondary {
+	direction: rtl;
+	font-family: var(--font-stack);
+	margin-top: 0.5rem;
+	text-align: right;
+}

@@ -156,6 +156,24 @@
 				}
 			}
 		},
+		"presentation": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"include_logo": {
+					"type": "boolean"
+				},
+				"bilingual": {
+					"type": "boolean"
+				},
+				"guided_tour": {
+					"type": "boolean"
+				},
+				"identity_style": {
+					"enum": ["Modern", "Classic", "Minimal"]
+				}
+			}
+		},
 		"parties": {
 			"type": "object",
 			"additionalProperties": false,

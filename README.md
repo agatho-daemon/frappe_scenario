@@ -110,6 +110,23 @@ archetype that the generation engine does not yet support.
 Scenario commands use the Bench default site configured by `bench use`.
 Supply `--site <site-name>` before `scenario` to target another site explicitly.
 
+For a polished, warning-free demonstration, choose **Presentation Demo** in
+`bench scenario setup` or the Desk setup wizard, initialize the proposed
+ERPNext foundations, then run:
+
+```bash
+bench scenario presentation-demo
+```
+
+The resulting Scenario Run exposes **Open Presentation**. Its read-only Desk
+surface derives branded metrics, recent activity, and a guided ERPNext tour
+from the run's recorded capabilities and real documents. Branding includes a
+deterministic color system and optional inline SVG mark; supported locale pairs
+receive curated bilingual headings. Presentation is refused unless validation
+has zero errors and warnings and its persisted quality report is `Ready`.
+Approved presentation exports contain the versioned specification, hashes,
+identity, and copy—never provider credentials.
+
 Inspect site readiness without changing any records or settings:
 
 ```bash
@@ -334,6 +351,9 @@ develop. Each compatibility Bench must test the exact same committed revision.
   execution, reviewable AI Brief compilation, and human-approved qualitative
   plausibility review are implemented. The grounded tutor is implemented as a
   read-only, citation-validated learning workflow.
+- Presentation Demo provides deterministic identity, optional logo, bilingual
+  polish, recent evidence-backed activity, metrics, and a guided Desk tour. It
+  is published only for warning-free, quality-ready runs.
 - No Crispy Print or other third-party app code is modified or imported.
 - HRMS, manufacturing, projects, assets, lending, and regional compliance
   remain future optional providers. Manufacturing and Construction/Project

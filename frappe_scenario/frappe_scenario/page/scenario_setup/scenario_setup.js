@@ -239,19 +239,19 @@ class ScenarioSetupWizard {
 			$("<div class='alert alert-success'>")
 				.text(
 					this.model.onboarding.scenario_run
-						? __("Quick Demo is ready.")
+						? __("{0} is ready.", [this.model.choices.intent])
 						: __(
 								"ERPNext foundations are ready. No scenario business data has run yet."
 						  )
 				)
 				.appendTo(section);
 			if (
-				this.model.choices.intent === "Quick Demo" &&
+				["Quick Demo", "Presentation Demo"].includes(this.model.choices.intent) &&
 				!this.model.onboarding.scenario_run
 			) {
 				$("<button class='btn btn-primary btn-sm'>")
-					.text(__("Generate Quick Demo"))
-					.on("click", () => this.generate_quick_demo())
+					.text(__("Generate {0}", [this.model.choices.intent]))
+					.on("click", () => this.generate_demo())
 					.appendTo(section);
 			}
 			if (this.model.onboarding.scenario_run) {
@@ -264,6 +264,17 @@ class ScenarioSetupWizard {
 					)
 					.text(__("Open scenario run"))
 					.appendTo(section);
+				if (this.model.choices.intent === "Presentation Demo") {
+					$("<a class='btn btn-primary btn-sm ml-2'>")
+						.attr(
+							"href",
+							`/app/scenario-presentation?run=${encodeURIComponent(
+								this.model.onboarding.scenario_run
+							)}`
+						)
+						.text(__("Open presentation"))
+						.appendTo(section);
+				}
 			}
 		} else if (!this.model.preview_is_saved) {
 			$("<div class='alert alert-info'>")
@@ -341,30 +352,37 @@ class ScenarioSetupWizard {
 		);
 	}
 
-	generate_quick_demo() {
+	generate_demo() {
 		const non_disposable = !this.model.preflight.safety.disposable;
+		const intent = this.model.choices.intent;
 		const prompt = non_disposable
 			? __(
-					"This site is not marked disposable. Generate the linked Quick Demo on this default site anyway? Only manifest-owned records can be cleaned up automatically."
+					"This site is not marked disposable. Generate the linked {0} on this default site anyway? Only manifest-owned records can be cleaned up automatically.",
+					[intent]
 			  )
 			: __(
-					"Generate the linked Quick Demo now? This creates normal ERPNext business records owned by one cleanup manifest."
+					"Generate the linked {0} now? This creates normal ERPNext business records owned by one cleanup manifest.",
+					[intent]
 			  );
 		frappe.confirm(prompt, async () => {
+			const method =
+				intent === "Presentation Demo"
+					? "frappe_scenario.api.onboarding.generate_presentation_demo_run"
+					: "frappe_scenario.api.onboarding.generate_quick_demo_run";
 			const response = await frappe.call({
-				method: "frappe_scenario.api.onboarding.generate_quick_demo_run",
+				method,
 				type: "POST",
 				args: {
 					expected_version: this.model.onboarding.state_version,
 					allow_non_disposable: non_disposable ? 1 : 0,
-					accept_quality_warnings: 1,
+					...(intent === "Quick Demo" ? { accept_quality_warnings: 1 } : {}),
 				},
 				freeze: true,
 				freeze_message: __("Generating linked ERPNext activity…"),
 			});
 			this.model.onboarding = response.message.onboarding;
 			frappe.show_alert({
-				message: __("Quick Demo generated"),
+				message: __("{0} generated", [intent]),
 				indicator: "green",
 			});
 			this.render();

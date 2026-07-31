@@ -4,9 +4,17 @@
 
 import pytest
 
+from frappe_scenario.archetypes import get_archetype
 from frappe_scenario.core.random import DeterministicRandom, RandomService, derive_seed
+from frappe_scenario.providers.support.naming import item_code
 
 pytestmark = pytest.mark.pure
+
+
+def test_item_codes_can_be_namespaced_for_coexisting_company_catalogs():
+	family = get_archetype("hvac_distribution").families[0]
+	assert item_code(family, 1) != item_code(family, 1, namespace="WCS")
+	assert item_code(family, 1, namespace="WCS").startswith("WCS-")
 
 
 def test_derive_seed_is_stable_and_order_sensitive():

@@ -97,6 +97,27 @@ def generate_quick_demo(
 	accept_quality_warnings: bool = False,
 ) -> dict[str, Any]:
 	"""Create, approve, and synchronously execute one onboarding Quick Demo run."""
+	return _generate_demo(
+		expected_version=expected_version,
+		intent="Quick Demo",
+		compiler=compile_quick_demo_specification,
+		progress_step="quick_demo_generation",
+		allow_non_disposable=allow_non_disposable,
+		accept_quality_warnings=accept_quality_warnings,
+	)
+
+
+def _generate_demo(
+	*,
+	expected_version: int,
+	intent: str,
+	compiler: Any,
+	progress_step: str,
+	allow_non_disposable: bool = False,
+	accept_quality_warnings: bool = False,
+	require_warning_free: bool = False,
+) -> dict[str, Any]:
+	"""Shared approved onboarding execution for curated demo intents."""
 	doc = frappe.get_single(DOCTYPE)
 	if int(doc.state_version or 0) != int(expected_version):
 		frappe.throw(
@@ -113,8 +134,8 @@ def generate_quick_demo(
 		}
 
 	choices = validate_choices(_decode(doc.setup_choices))
-	if choices["intent"] != "Quick Demo":
-		frappe.throw(_("The Quick Demo generator requires the Quick Demo purpose."))
+	if choices["intent"] != intent:
+		frappe.throw(_("The {0} generator requires the {0} purpose.").format(intent))
 	preview = _decode(doc.preview)
 	quality = (preview.get("representative_samples") or {}).get("quality") or {}
 	if not quality.get("passed", False):
@@ -127,7 +148,7 @@ def generate_quick_demo(
 			_("Preview quality warnings require explicit confirmation before generation."),
 			frappe.ValidationError,
 		)
-	specification = compile_quick_demo_specification(choices)
+	specification = compiler(choices)
 	execution_plan = engine.plan(
 		specification,
 		allow_non_disposable=allow_non_disposable,
@@ -197,16 +218,30 @@ def generate_quick_demo(
 		)
 		raise
 
+	quality = result.get("quality", {})
+	counts = (result.get("validation") or {}).get("counts") or {}
+	warning_free = (
+		not counts.get("error") and not counts.get("warning") and not quality.get("confirmation_required")
+	)
 	target = (
 		READY
-		if result["status"] == engine.STATUS_COMPLETED and result.get("quality", {}).get("passed", False)
+		if (
+			result["status"] == engine.STATUS_COMPLETED
+			and quality.get("passed", False)
+			and (warning_free or not require_warning_free)
+		)
 		else FAILED
 	)
+	if require_warning_free and not warning_free:
+		result["presentation_blocker"] = (
+			"Presentation Demo requires zero validation warnings and a Ready quality report."
+		)
 	updated = transition_onboarding(
 		target,
 		expected_version=int(generating_doc.state_version),
 		updates={
-			"errors": result.get("error"),
+			"errors": result.get("error")
+			or ({"message": result["presentation_blocker"]} if result.get("presentation_blocker") else None),
 			"progress": {
 				"completed_steps": [
 					"choices",
@@ -214,7 +249,7 @@ def generate_quick_demo(
 					"setup_approval",
 					"erpnext_bootstrap",
 					"scenario_preview",
-					"quick_demo_generation",
+					progress_step,
 				],
 				"current_state": target,
 			},

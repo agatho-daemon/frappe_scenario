@@ -15,6 +15,7 @@ from frappe_scenario.core.onboarding import (
 	json_fields,
 	transition_onboarding,
 )
+from frappe_scenario.core.presentation import generate_presentation_demo
 from frappe_scenario.core.quick_demo import generate_quick_demo
 from frappe_scenario.core.setup_wizard import (
 	approve_setup,
@@ -94,6 +95,19 @@ def generate_quick_demo_run(
 		expected_version=int(expected_version),
 		allow_non_disposable=bool(int(allow_non_disposable)),
 		accept_quality_warnings=bool(int(accept_quality_warnings)),
+	)
+
+
+@frappe.whitelist(methods=["POST"])
+def generate_presentation_demo_run(
+	expected_version: int,
+	allow_non_disposable: int | bool = False,
+) -> dict[str, Any]:
+	"""Generate a warning-free Presentation Demo through the normal engine."""
+	frappe.only_for("System Manager")
+	return generate_presentation_demo(
+		expected_version=int(expected_version),
+		allow_non_disposable=bool(int(allow_non_disposable)),
 	)
 
 

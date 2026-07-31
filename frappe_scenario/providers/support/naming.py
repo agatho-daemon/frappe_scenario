@@ -34,8 +34,9 @@ def family_prefix(family: ItemFamily) -> str:
 	return words[0][:3].upper()
 
 
-def item_code(family: ItemFamily, index: int) -> str:
-	return f"{family_prefix(family)}-{index:04d}"
+def item_code(family: ItemFamily, index: int, *, namespace: str | None = None) -> str:
+	prefix = f"{slugify(namespace).upper()}-" if namespace else ""
+	return f"{prefix}{family_prefix(family)}-{index:04d}"
 
 
 def item_name(random: Any, family: ItemFamily) -> str:

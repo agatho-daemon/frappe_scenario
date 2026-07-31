@@ -9,6 +9,7 @@ cleanup gives the site back.
 """
 
 import datetime
+import json
 
 import pytest
 
@@ -196,8 +197,6 @@ def test_realistic_scale_plans_match_their_volume_contract(erpnext_site, scale, 
 	],
 )
 def test_every_newly_advertised_archetype_passes_its_real_lifecycle(erpnext_site, archetype_id, seed):
-	import json
-
 	import frappe
 
 	archetype = get_archetype(archetype_id)
@@ -303,8 +302,6 @@ def test_quick_demo_exceptions_are_real_linked_erpnext_documents(generated):
 
 
 def test_operational_breadth_uses_real_linked_erpnext_documents(generated):
-	import json
-
 	import frappe
 
 	run = frappe.get_doc("Scenario Run", generated["run_id"])
@@ -395,8 +392,6 @@ def test_completed_run_has_a_chronological_story_linked_to_real_documents(genera
 
 
 def test_grounded_tutor_cites_real_scenario_evidence_and_remains_read_only(generated, rollback):
-	import json
-
 	import frappe
 
 	from frappe_scenario.ai.executor import AIHTTPResult
@@ -652,6 +647,62 @@ def test_an_export_is_enough_to_reproduce_and_review_a_run(generated):
 	assert exported["compatibility"]["installed_apps"]["erpnext"]
 	assert exported["compatibility"]["provider_versions"]
 	assert len(exported["manifest"]) >= generated["record_count"]
+
+
+def test_presentation_demo_is_warning_free_and_uses_real_scenario_evidence(
+	erpnext_site, smoke_specification, generated
+):
+	from copy import deepcopy
+
+	import frappe
+
+	from frappe_scenario.core.presentation import export_presentation, presentation_home
+
+	baseline_run = frappe.get_doc("Scenario Run", generated["run_id"])
+	baseline_company = next(
+		entry.name for entry in load_manifest(generated["run_id"]) if entry.doctype == "Company"
+	)
+
+	specification = deepcopy(smoke_specification)
+	specification["title"] = "Lifecycle Presentation Demo"
+	specification["scenario"]["intent"] = "Presentation Demo"
+	# The module-scoped learning fixture intentionally keeps the seed-7 company
+	# alive. Presentation owns an independent business so the acceptance test also
+	# proves that two scenario experiences can coexist without reusing records.
+	specification["scenario"]["seed"] = 607
+	specification["presentation"] = {
+		"include_logo": True,
+		"bilingual": True,
+		"guided_tour": True,
+		"identity_style": "Modern",
+	}
+	run_name = create_run(specification, approved=True)
+	try:
+		generated = execute_run(run_name)
+		assert generated["status"] == "Completed", generated.get("error")
+		presentation_run = frappe.get_doc("Scenario Run", run_name)
+		assert presentation_run.manifest_file != baseline_run.manifest_file
+		assert frappe.db.exists("Company", baseline_company)
+		validation = validate_run(run_name)
+		assert validation["counts"]["error"] == 0
+		assert validation["counts"]["warning"] == 0
+
+		presentation = presentation_home(run_name)
+		assert presentation["quality"]["counts"]["warning"] == 0
+		assert presentation["identity"]["logo_svg"].startswith("<svg")
+		assert presentation["metrics"]
+		assert presentation["recent_activity"]
+		assert presentation["tour"]
+		assert all(step["evidence_count"] > 0 for step in presentation["tour"])
+
+		exported = export_presentation(run_name)
+		assert exported["format"] == "frappe-scenario-presentation-1"
+		assert exported["canonical_hash"] == generated["canonical_hash"]
+		assert "credential" not in json.dumps(exported).lower()
+	finally:
+		cleanup = cleanup_run(run_name)
+		assert cleanup["blockers"] == []
+		assert frappe.db.exists("Company", baseline_company)
 
 
 def test_the_same_seed_reproduces_the_same_dataset(erpnext_site, smoke_specification, generated):

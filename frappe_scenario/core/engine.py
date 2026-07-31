@@ -46,6 +46,12 @@ RUN_DOCTYPE = "Scenario Run"
 VALIDATION_DOCTYPE = "Scenario Validation Result"
 MANIFEST_FILENAME = "manifest.jsonl"
 
+
+def _manifest_filename(run_name: str) -> str:
+	"""Use a physical filename unique to one run; Frappe deduplicates files."""
+	return f"{run_name}-{MANIFEST_FILENAME}"
+
+
 STATUS_DRAFT = "Draft"
 STATUS_QUEUED = "Queued"
 STATUS_RUNNING = "Running"
@@ -694,12 +700,13 @@ def _publish_progress(run_name: str, payload: dict[str, Any]) -> None:
 def _persist_manifest(run: Any, manifest: Manifest) -> None:
 	"""Store the detailed manifest as a private JSONL File attached to the run."""
 	content = manifest.to_jsonl()
+	filename = _manifest_filename(run.name)
 	existing = frappe.db.get_value(
 		"File",
 		{
 			"attached_to_doctype": RUN_DOCTYPE,
 			"attached_to_name": run.name,
-			"file_name": MANIFEST_FILENAME,
+			"file_name": filename,
 		},
 		"name",
 	)
@@ -711,7 +718,7 @@ def _persist_manifest(run: Any, manifest: Manifest) -> None:
 		file_doc = frappe.get_doc(
 			{
 				"doctype": "File",
-				"file_name": MANIFEST_FILENAME,
+				"file_name": filename,
 				"attached_to_doctype": RUN_DOCTYPE,
 				"attached_to_name": run.name,
 				"is_private": 1,
@@ -725,15 +732,22 @@ def load_manifest(run: Any | str) -> Manifest:
 	"""Read the manifest attached to a run."""
 	if isinstance(run, str):
 		run = frappe.get_doc(RUN_DOCTYPE, run)
-	name = frappe.db.get_value(
-		"File",
-		{
-			"attached_to_doctype": RUN_DOCTYPE,
-			"attached_to_name": run.name,
-			"file_name": MANIFEST_FILENAME,
-		},
-		"name",
-	)
+	name = None
+	# The legacy plain filename remains readable for existing installations.
+	# New writes are run-specific so two live scenarios can never share file
+	# content through Frappe's hash/file-url deduplication.
+	for filename in (_manifest_filename(run.name), MANIFEST_FILENAME):
+		name = frappe.db.get_value(
+			"File",
+			{
+				"attached_to_doctype": RUN_DOCTYPE,
+				"attached_to_name": run.name,
+				"file_name": filename,
+			},
+			"name",
+		)
+		if name:
+			break
 	if not name:
 		return Manifest()
 	file_doc = frappe.get_doc("File", name)

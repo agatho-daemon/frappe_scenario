@@ -112,6 +112,22 @@ def export(run_name: str) -> dict[str, Any]:
 
 
 @frappe.whitelist()
+def get_presentation(run_name: str) -> dict[str, Any]:
+	from frappe_scenario.core.presentation import presentation_home
+
+	frappe.only_for(ROLE)
+	return presentation_home(run_name)
+
+
+@frappe.whitelist()
+def export_presentation(run_name: str) -> dict[str, Any]:
+	from frappe_scenario.core.presentation import export_presentation as export_bundle
+
+	frappe.only_for(ROLE)
+	return export_bundle(run_name)
+
+
+@frappe.whitelist()
 def propose_repair(run_name: str) -> dict[str, Any]:
 	"""Turn validation failures into concrete, reviewable specification changes.
 

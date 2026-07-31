@@ -284,6 +284,49 @@ def quick_demo_command(
 		_echo_run_result(result["run"])
 
 
+@scenario.command("presentation-demo")
+@click.option("--yes", is_flag=True, help="Approve and generate without another prompt.")
+@click.option(
+	"--allow-non-disposable",
+	is_flag=True,
+	help="Generate on a site that is not marked disposable. Use with care.",
+)
+@click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
+@pass_context
+def presentation_demo_command(
+	context: Any,
+	yes: bool,
+	allow_non_disposable: bool,
+	as_json: bool,
+) -> None:
+	"""Generate the warning-free Presentation Demo configured by setup."""
+	with _site(context):
+		from frappe_scenario.core.onboarding import DOCTYPE
+		from frappe_scenario.core.presentation import (
+			compile_presentation_specification,
+			generate_presentation_demo,
+		)
+
+		onboarding = frappe.get_single(DOCTYPE)
+		choices = json.loads(onboarding.setup_choices or "{}")
+		specification = compile_presentation_specification(choices)
+		if not yes:
+			click.echo(
+				f"{specification['title']} will generate a curated identity, recent linked activity, "
+				"presentation metrics, and a guided ERPNext tour."
+			)
+			click.confirm("Approve and generate this Presentation Demo?", abort=True)
+		result = generate_presentation_demo(
+			expected_version=int(onboarding.state_version),
+			allow_non_disposable=allow_non_disposable,
+		)
+
+	if as_json:
+		click.echo(json.dumps(result, indent="\t", default=str))
+	else:
+		_echo_run_result(result["run"])
+
+
 # -- specification -------------------------------------------------------------
 @scenario.command("validate-spec")
 @click.argument("specification_file", type=click.Path(dir_okay=False))
