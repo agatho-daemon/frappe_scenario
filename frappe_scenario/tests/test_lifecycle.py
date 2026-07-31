@@ -122,6 +122,36 @@ def test_the_generated_scenario_validates(generated):
 	assert result["passed"]
 
 
+def test_quick_demo_exceptions_are_real_linked_erpnext_documents(generated):
+	import frappe
+
+	returns = frappe.get_all(
+		"Sales Invoice",
+		filters={"is_return": 1, "docstatus": 1},
+		fields=["name", "return_against"],
+	)
+	assert returns
+	assert all(row.return_against for row in returns)
+
+	partial_deliveries = frappe.db.sql(
+		"""
+		select distinct dni.parent
+		from `tabDelivery Note Item` dni
+		join `tabSales Order Item` soi on soi.name = dni.so_detail
+		where dni.docstatus = 1 and dni.qty < soi.qty
+		""",
+		as_dict=True,
+	)
+	assert partial_deliveries
+
+
+def test_completed_run_exposes_report_ready_outcomes(generated):
+	assert generated["outcomes"]["master_data"]["customers"] > 0
+	assert generated["outcomes"]["selling"]["invoice_count"] > 0
+	assert generated["outcomes"]["selling"]["return_documents"] > 0
+	assert generated["outcomes"]["reports"]
+
+
 def test_validation_findings_carry_enough_to_act_on(generated):
 	for issue in validate_run(generated["run_id"])["issues"]:
 		assert issue["rule"]

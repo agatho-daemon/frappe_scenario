@@ -15,6 +15,7 @@ from frappe_scenario.core.onboarding import (
 	json_fields,
 	transition_onboarding,
 )
+from frappe_scenario.core.quick_demo import generate_quick_demo
 from frappe_scenario.core.setup_wizard import (
 	approve_setup,
 	save_choices,
@@ -79,6 +80,19 @@ def initialize_erpnext(expected_version: int) -> dict[str, Any]:
 	"""Apply an approved ERPNext foundation plan without generating scenario data."""
 	frappe.only_for("System Manager")
 	return execute_approved_bootstrap(expected_version=int(expected_version))
+
+
+@frappe.whitelist(methods=["POST"])
+def generate_quick_demo_run(
+	expected_version: int,
+	allow_non_disposable: int | bool = False,
+) -> dict[str, Any]:
+	"""Generate the approved Quick Demo through the normal scenario engine."""
+	frappe.only_for("System Manager")
+	return generate_quick_demo(
+		expected_version=int(expected_version),
+		allow_non_disposable=bool(int(allow_non_disposable)),
+	)
 
 
 def _serialize(doc: Any) -> dict[str, Any]:

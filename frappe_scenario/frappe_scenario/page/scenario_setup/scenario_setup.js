@@ -217,8 +217,34 @@ class ScenarioSetupWizard {
 				.appendTo(section);
 		} else if (this.model.onboarding.bootstrap_completed) {
 			$("<div class='alert alert-success'>")
-				.text(__("ERPNext foundations are ready. No scenario business data has run yet."))
+				.text(
+					this.model.onboarding.scenario_run
+						? __("Quick Demo is ready.")
+						: __(
+								"ERPNext foundations are ready. No scenario business data has run yet."
+						  )
+				)
 				.appendTo(section);
+			if (
+				this.model.choices.intent === "Quick Demo" &&
+				!this.model.onboarding.scenario_run
+			) {
+				$("<button class='btn btn-primary btn-sm'>")
+					.text(__("Generate Quick Demo"))
+					.on("click", () => this.generate_quick_demo())
+					.appendTo(section);
+			}
+			if (this.model.onboarding.scenario_run) {
+				$("<a class='btn btn-default btn-sm ml-2'>")
+					.attr(
+						"href",
+						`/app/scenario-run/${encodeURIComponent(
+							this.model.onboarding.scenario_run
+						)}`
+					)
+					.text(__("Open scenario run"))
+					.appendTo(section);
+			}
 		} else if (!this.model.preview_is_saved) {
 			$("<div class='alert alert-info'>")
 				.text(__("Save and preview these choices before approval."))
@@ -293,6 +319,35 @@ class ScenarioSetupWizard {
 				this.render();
 			}
 		);
+	}
+
+	generate_quick_demo() {
+		const non_disposable = !this.model.preflight.safety.disposable;
+		const prompt = non_disposable
+			? __(
+					"This site is not marked disposable. Generate the linked Quick Demo on this default site anyway? Only manifest-owned records can be cleaned up automatically."
+			  )
+			: __(
+					"Generate the linked Quick Demo now? This creates normal ERPNext business records owned by one cleanup manifest."
+			  );
+		frappe.confirm(prompt, async () => {
+			const response = await frappe.call({
+				method: "frappe_scenario.api.onboarding.generate_quick_demo_run",
+				type: "POST",
+				args: {
+					expected_version: this.model.onboarding.state_version,
+					allow_non_disposable: non_disposable ? 1 : 0,
+				},
+				freeze: true,
+				freeze_message: __("Generating linked ERPNext activity…"),
+			});
+			this.model.onboarding = response.message.onboarding;
+			frappe.show_alert({
+				message: __("Quick Demo generated"),
+				indicator: "green",
+			});
+			this.render();
+		});
 	}
 
 	select(fieldname, label, options, description = null) {

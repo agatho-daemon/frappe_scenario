@@ -44,6 +44,7 @@
   "published_capabilities",
   "warnings",
   "error",
+  "outcome_summary",
   "section_fingerprint",
   "canonical_hash",
   "structural_hash",
@@ -288,6 +289,13 @@
    "fieldname": "error",
    "fieldtype": "Code",
    "label": "Error",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "outcome_summary",
+   "fieldtype": "Code",
+   "label": "Outcome Summary",
    "options": "JSON",
    "read_only": 1
   },

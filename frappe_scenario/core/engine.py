@@ -398,6 +398,10 @@ def execute_run(
 	run.db_set("canonical_hash", canonical["hash"], update_modified=False)
 	run.db_set("structural_hash", structural, update_modified=False)
 	run.db_set("canonical_details", json.dumps(canonical, indent="\t", default=str), update_modified=False)
+	from frappe_scenario.core.outcomes import build_outcome_summary
+
+	outcomes = build_outcome_summary(context)
+	run.db_set("outcome_summary", json.dumps(outcomes, indent="\t", default=str), update_modified=False)
 	run.db_set("status", STATUS_COMPLETED, update_modified=False)
 	frappe.db.commit()
 
@@ -409,6 +413,7 @@ def execute_run(
 		"manifest": manifest_summary,
 		"canonical_hash": canonical["hash"],
 		"structural_hash": structural,
+		"outcomes": outcomes,
 		"warnings": context.warnings,
 	}
 
@@ -561,6 +566,7 @@ def get_status(run_name: str) -> dict[str, Any]:
 		"manifest_file": run.manifest_file,
 		"manifest_summary": json.loads(run.manifest_summary or "{}"),
 		"validation_summary": json.loads(run.validation_summary or "{}"),
+		"outcomes": json.loads(run.outcome_summary or "{}"),
 		"warnings": json.loads(run.warnings or "[]"),
 		"error": json.loads(run.error) if run.error else None,
 		"steps": [

@@ -243,6 +243,46 @@ def setup_command(
 		)
 
 
+@scenario.command("quick-demo")
+@click.option("--yes", is_flag=True, help="Approve and generate without another prompt.")
+@click.option(
+	"--allow-non-disposable",
+	is_flag=True,
+	help="Generate on a site that is not marked disposable. Use with care.",
+)
+@click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
+@pass_context
+def quick_demo_command(
+	context: Any,
+	yes: bool,
+	allow_non_disposable: bool,
+	as_json: bool,
+) -> None:
+	"""Generate the Quick Demo configured by ``scenario setup``."""
+	with _site(context):
+		from frappe_scenario.core.onboarding import DOCTYPE
+		from frappe_scenario.core.quick_demo import compile_quick_demo_specification, generate_quick_demo
+
+		onboarding = frappe.get_single(DOCTYPE)
+		choices = json.loads(onboarding.setup_choices or "{}")
+		specification = compile_quick_demo_specification(choices)
+		if not yes:
+			click.echo(
+				f"{specification['title']} will generate linked buying, selling, stock, "
+				"payment, return, and accounting records."
+			)
+			click.confirm("Approve and generate this Quick Demo?", abort=True)
+		result = generate_quick_demo(
+			expected_version=int(onboarding.state_version),
+			allow_non_disposable=allow_non_disposable,
+		)
+
+	if as_json:
+		click.echo(json.dumps(result, indent="\t", default=str))
+	else:
+		_echo_run_result(result["run"])
+
+
 # -- specification -------------------------------------------------------------
 @scenario.command("validate-spec")
 @click.argument("specification_file", type=click.Path(dir_okay=False))

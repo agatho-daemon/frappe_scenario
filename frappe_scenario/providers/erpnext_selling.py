@@ -45,6 +45,7 @@ from frappe_scenario.providers.support.pricing import discounted_rate
 ORDERS = "erpnext.selling.sales_orders"
 DELIVERIES = "erpnext.selling.delivery_notes"
 INVOICES = "erpnext.selling.sales_invoices"
+RETURNS = "erpnext.selling.returns"
 
 SALES_ORDER_MODULE = "erpnext.selling.doctype.sales_order"
 DELIVERY_NOTE_MODULE = "erpnext.stock.doctype.delivery_note"
@@ -66,7 +67,7 @@ class ErpnextSellingProvider(ScenarioProvider):
 
 	requires_apps = {"erpnext": ">=15.0.0"}
 	requires_capabilities = {COMPANY, ACCOUNTS, ITEMS, WAREHOUSES, CUSTOMERS, PAYMENT_TERMS, STOCK}
-	provides_capabilities = {ORDERS, DELIVERIES, INVOICES}
+	provides_capabilities = {ORDERS, DELIVERIES, INVOICES, RETURNS}
 
 	capabilities = [
 		CapabilityDeclaration(
@@ -75,6 +76,13 @@ class ErpnextSellingProvider(ScenarioProvider):
 			doctypes=["Sales Order"],
 			requires=[CUSTOMERS, ITEMS],
 			validation_rules=["erpnext.selling.order_dates", "erpnext.selling.seasonal_uplift"],
+		),
+		CapabilityDeclaration(
+			id=RETURNS,
+			description="Controlled stock returns and credit notes mapped from submitted sales documents.",
+			doctypes=["Delivery Note", "Sales Invoice"],
+			requires=[DELIVERIES, INVOICES],
+			validation_rules=["erpnext.selling.return_links"],
 		),
 		CapabilityDeclaration(
 			id=DELIVERIES,
@@ -157,8 +165,19 @@ class ErpnextSellingProvider(ScenarioProvider):
 			doctype="Sales Invoice",
 			count=lifecycle["sales_invoices"],
 		)
+		return_ratio = float(operations.get("returns") or 0)
+		return_count = min(
+			lifecycle["sales_invoices"],
+			max(1, round(lifecycle["sales_invoices"] * return_ratio)) if return_ratio else 0,
+		)
+		plan.step(
+			RETURNS,
+			"Create a controlled set of mapped customer returns and credit notes.",
+			doctype="Sales Invoice",
+			count=return_count,
+		)
 
-		for unsupported in ("returns", "warranty_claims"):
+		for unsupported in ("warranty_claims",):
 			if float(operations.get(unsupported) or 0) > 0:
 				plan.unsupported.append(
 					f"operations.{unsupported} is not implemented yet and will be ignored."
@@ -206,6 +225,8 @@ class ErpnextSellingProvider(ScenarioProvider):
 		delivery_ratio = float(options.get("delivery_ratio", 0.9))
 		invoice_ratio = float(options.get("invoice_ratio", 0.92))
 		max_discount = float(options.get("max_discount", MAX_DISCOUNT))
+		partial_delivery_ratio = float(operations.get("partial_deliveries") or 0)
+		return_ratio = float(operations.get("returns") or 0)
 
 		orders: list[dict[str, Any]] = []
 		deliveries: list[dict[str, Any]] = []
@@ -250,7 +271,12 @@ class ErpnextSellingProvider(ScenarioProvider):
 				if not random.chance(delivery_ratio):
 					continue
 				delivery = self._create_delivery(
-					context, adapter=adapter, order=order, random=random, pack=pack
+					context,
+					adapter=adapter,
+					order=order,
+					random=random,
+					pack=pack,
+					partial_ratio=partial_delivery_ratio,
 				)
 				if delivery is None:
 					continue
@@ -262,14 +288,25 @@ class ErpnextSellingProvider(ScenarioProvider):
 				if invoice is not None:
 					invoices.append(invoice)
 
+		returns = self._create_returns(
+			context,
+			adapter=adapter,
+			invoices=invoices,
+			deliveries=deliveries,
+			random=random,
+			ratio=return_ratio,
+		)
+
 		context.publish(ORDERS, orders)
 		context.publish(DELIVERIES, deliveries)
 		context.publish(INVOICES, invoices)
-		result.published.extend([ORDERS, DELIVERIES, INVOICES])
+		context.publish(RETURNS, returns)
+		result.published.extend([ORDERS, DELIVERIES, INVOICES, RETURNS])
 		result.summary = {
 			"sales_orders": len(orders),
 			"delivery_notes": len(deliveries),
 			"sales_invoices": len(invoices),
+			"returns_and_credit_notes": len(returns),
 			"orders_by_month": monthly_orders,
 		}
 		return result
@@ -398,7 +435,14 @@ class ErpnextSellingProvider(ScenarioProvider):
 
 	# -- delivery note -------------------------------------------------------
 	def _create_delivery(
-		self, context: ScenarioContext, *, adapter: Any, order: dict[str, Any], random: Any, pack: Any
+		self,
+		context: ScenarioContext,
+		*,
+		adapter: Any,
+		order: dict[str, Any],
+		random: Any,
+		pack: Any,
+		partial_ratio: float,
 	) -> dict[str, Any] | None:
 		context.current_capability = DELIVERIES
 		make_delivery_note = adapter.erpnext_mapper(SALES_ORDER_MODULE, "make_delivery_note")
@@ -412,6 +456,13 @@ class ErpnextSellingProvider(ScenarioProvider):
 
 		doc = make_delivery_note(order["name"])
 		adapter.set_posting_datetime(doc, delivery_date, POSTING_TIME)
+		partial = False
+		if random.chance(partial_ratio):
+			for row in doc.items:
+				quantity = float(row.qty or 0)
+				if quantity > 1:
+					row.qty = max(1, int(quantity * random.uniform(0.45, 0.8)))
+					partial = partial or float(row.qty) < quantity
 
 		context.insert_doc(
 			doc,
@@ -428,7 +479,12 @@ class ErpnextSellingProvider(ScenarioProvider):
 			"credit_days": order["credit_days"],
 			"posting_date": delivery_date.isoformat(),
 			"grand_total": float(doc.grand_total or 0),
-			"cost_basis": order["cost_basis"],
+			"cost_basis": round(
+				order["cost_basis"]
+				* (float(doc.grand_total or 0) / max(float(order["grand_total"] or 0), 0.000001)),
+				6,
+			),
+			"partial": partial,
 		}
 
 	# -- sales invoice -------------------------------------------------------
@@ -515,12 +571,81 @@ class ErpnextSellingProvider(ScenarioProvider):
 			"channel": "cash",
 		}
 
+	def _create_returns(
+		self,
+		context: ScenarioContext,
+		*,
+		adapter: Any,
+		invoices: list[dict[str, Any]],
+		deliveries: list[dict[str, Any]],
+		random: Any,
+		ratio: float,
+	) -> list[dict[str, Any]]:
+		if ratio <= 0 or not invoices:
+			return []
+
+		target = min(len(invoices), max(1, round(len(invoices) * ratio)))
+		selected = random.shuffled(invoices)
+		delivery_by_name = {entry["name"]: entry for entry in deliveries}
+		make_return_doc = frappe.get_attr("erpnext.controllers.sales_and_purchase_return.make_return_doc")
+		records: list[dict[str, Any]] = []
+		for invoice in selected[:target]:
+			posting_date = clamp(
+				datetime.date.fromisoformat(invoice["posting_date"]) + datetime.timedelta(days=1),
+				datetime.date.fromisoformat(invoice["posting_date"]),
+				context.anchor_date,
+			)
+
+			if invoice.get("delivery_note") and invoice["delivery_note"] in delivery_by_name:
+				source = delivery_by_name[invoice["delivery_note"]]
+				context.current_capability = RETURNS
+				delivery_return = make_return_doc("Delivery Note", source["name"])
+				adapter.set_posting_datetime(delivery_return, posting_date, POSTING_TIME)
+				context.insert_doc(
+					delivery_return,
+					capability=RETURNS,
+					submit=True,
+					logical_id=f"delivery_return:{source['name']}",
+					dependencies=[f"Delivery Note/{source['name']}"],
+				)
+				records.append(
+					{
+						"name": delivery_return.name,
+						"doctype": "Delivery Note",
+						"return_against": source["name"],
+						"posting_date": posting_date.isoformat(),
+						"grand_total": float(delivery_return.grand_total or 0),
+					}
+				)
+
+			context.current_capability = RETURNS
+			credit_note = make_return_doc("Sales Invoice", invoice["name"])
+			adapter.set_posting_datetime(credit_note, posting_date, POSTING_TIME)
+			context.insert_doc(
+				credit_note,
+				capability=RETURNS,
+				submit=True,
+				logical_id=f"sales_credit_note:{invoice['name']}",
+				dependencies=[f"Sales Invoice/{invoice['name']}"],
+			)
+			records.append(
+				{
+					"name": credit_note.name,
+					"doctype": "Sales Invoice",
+					"return_against": invoice["name"],
+					"posting_date": posting_date.isoformat(),
+					"grand_total": float(credit_note.grand_total or 0),
+				}
+			)
+		return records
+
 	# -- validation ----------------------------------------------------------
 	def validate(self, context: ScenarioContext) -> ValidationResult:
 		result = ValidationResult()
 		orders = context.optional(ORDERS) or []
 		deliveries = context.optional(DELIVERIES) or []
 		invoices = context.optional(INVOICES) or []
+		returns = context.optional(RETURNS) or []
 
 		for order in orders:
 			order_date = datetime.date.fromisoformat(order["order_date"])
@@ -555,6 +680,16 @@ class ErpnextSellingProvider(ScenarioProvider):
 		self._validate_margins(context, invoices, result)
 		self._validate_concentration(context, invoices, result)
 		self._validate_seasonality(context, orders, invoices, result)
+		for entry in returns:
+			if not entry.get("return_against"):
+				result.error(
+					rule="erpnext.selling.return_links",
+					message=f"{entry['doctype']} {entry['name']} is not linked to its source.",
+					provider=self.id,
+					capability=RETURNS,
+					doctype=entry["doctype"],
+					record=entry["name"],
+				)
 		return result
 
 	def _validate_margins(

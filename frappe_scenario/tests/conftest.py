@@ -83,4 +83,9 @@ def smoke_specification() -> dict:
 	from frappe_scenario.core.specification import read_specification_file
 
 	path = Path(__file__).resolve().parents[2] / "examples" / "hvac_kuwait_smoke.json"
-	return read_specification_file(str(path))
+	specification = read_specification_file(str(path))
+	specification["operations"] = {
+		"partial_deliveries": 0.2,
+		"returns": 0.15,
+	}
+	return specification
