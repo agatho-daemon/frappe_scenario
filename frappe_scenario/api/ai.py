@@ -41,6 +41,43 @@ def compile_brief(
 	)
 
 
+@frappe.whitelist(methods=["POST"])
+def review_onboarding_preview(
+	provider: str = "openai",
+	model: str | None = None,
+) -> dict[str, Any]:
+	"""Review only qualitative artifacts from the saved onboarding preview."""
+	frappe.only_for(ROLE)
+	from frappe_scenario.ai.plausibility import review_onboarding_preview as review
+
+	return review(provider=provider, model=model)
+
+
+@frappe.whitelist(methods=["POST"])
+def approve_plausibility_review(review: str) -> dict[str, Any]:
+	"""Approve cached textual suggestions without mutating ERPNext records."""
+	frappe.only_for(ROLE)
+	from frappe_scenario.ai.plausibility import approve_review
+
+	return approve_review(review)
+
+
+@frappe.whitelist(methods=["POST"])
+def reject_plausibility_review(review: str) -> dict[str, Any]:
+	frappe.only_for(ROLE)
+	from frappe_scenario.ai.plausibility import reject_review
+
+	return reject_review(review)
+
+
+@frappe.whitelist()
+def get_approved_plausibility_artifacts(review: str) -> dict[str, Any]:
+	frappe.only_for(ROLE)
+	from frappe_scenario.ai.plausibility import approved_artifacts
+
+	return approved_artifacts(review)
+
+
 @frappe.whitelist()
 def describe_ai_adapters() -> dict[str, Any]:
 	"""Return capabilities and safe configuration status, never credentials."""

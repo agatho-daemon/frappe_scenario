@@ -1,0 +1,219 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-07-31 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "source_doctype",
+  "source_name",
+  "status",
+  "summary",
+  "section_review",
+  "findings",
+  "approved_artifacts",
+  "review_scope",
+  "model_output",
+  "section_provenance",
+  "provider",
+  "model",
+  "adapter_version",
+  "prompt_version",
+  "catalog_hash",
+  "input_hash",
+  "output_hash",
+  "provider_response_id",
+  "provider_usage",
+  "reviewed_on",
+  "section_approval",
+  "approved_by",
+  "approved_on"
+ ],
+ "fields": [
+  {
+   "default": "SCN-REV-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "SCN-REV-.YYYY.-",
+   "set_only_once": 1
+  },
+  {
+   "fieldname": "source_doctype",
+   "fieldtype": "Link",
+   "label": "Source Type",
+   "options": "DocType",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "source_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Source",
+   "options": "source_doctype",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "Pending Review",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending Review\nApproved\nRejected",
+   "reqd": 1
+  },
+  {
+   "fieldname": "summary",
+   "fieldtype": "Small Text",
+   "label": "Summary",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_review",
+   "fieldtype": "Section Break",
+   "label": "Review Evidence"
+  },
+  {
+   "fieldname": "findings",
+   "fieldtype": "Code",
+   "label": "Findings",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "description": "Textual replacements become available to clients only after approval.",
+   "fieldname": "approved_artifacts",
+   "fieldtype": "Code",
+   "label": "Proposed Text Artifacts",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "description": "Qualitative projection sent for review. Numeric and operational fields are excluded.",
+   "fieldname": "review_scope",
+   "fieldtype": "Code",
+   "label": "Review Scope",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "model_output",
+   "fieldtype": "Code",
+   "label": "Original Model Output",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_provenance",
+   "fieldtype": "Section Break",
+   "label": "Provenance"
+  },
+  {
+   "fieldname": "provider",
+   "fieldtype": "Data",
+   "label": "Provider",
+   "read_only": 1
+  },
+  {
+   "fieldname": "model",
+   "fieldtype": "Data",
+   "label": "Model",
+   "read_only": 1
+  },
+  {
+   "fieldname": "adapter_version",
+   "fieldtype": "Data",
+   "label": "Adapter Version",
+   "read_only": 1
+  },
+  {
+   "fieldname": "prompt_version",
+   "fieldtype": "Data",
+   "label": "Prompt Version",
+   "read_only": 1
+  },
+  {
+   "fieldname": "catalog_hash",
+   "fieldtype": "Data",
+   "label": "Capability Catalogue Hash",
+   "read_only": 1
+  },
+  {
+   "fieldname": "input_hash",
+   "fieldtype": "Data",
+   "label": "Input Hash",
+   "read_only": 1
+  },
+  {
+   "fieldname": "output_hash",
+   "fieldtype": "Data",
+   "label": "Output Hash",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provider_response_id",
+   "fieldtype": "Data",
+   "label": "Provider Response ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provider_usage",
+   "fieldtype": "Code",
+   "label": "Provider Usage",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reviewed_on",
+   "fieldtype": "Datetime",
+   "label": "Reviewed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_approval",
+   "fieldtype": "Section Break",
+   "label": "Human Approval"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "label": "Approved On",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Scenario",
+ "name": "Scenario AI Review",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "search_fields": "source_name,provider,model,status",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "source_name",
+ "track_changes": 1
+}

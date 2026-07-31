@@ -194,6 +194,22 @@ compilation. Credentials are added only at the HTTP execution boundary, are
 sent only to the official OpenAI Responses endpoint, and are never stored in
 the draft or returned by Scenario APIs.
 
+### AI plausibility review
+
+After saving the onboarding preview, a System Manager can POST to
+`frappe_scenario.api.ai.review_onboarding_preview`. The review receives only a
+qualitative projection: names, contacts, regional address text, product names
+and descriptions, and transaction-story links. Prices, costs, quantities,
+dates, document state, stock, taxes, and accounting are excluded from the
+request and remain deterministic.
+
+The result is stored as a pending `Scenario AI Review`. Proposed textual
+replacements remain suggestions and cannot alter ERPNext records. A person may
+approve or reject the review through the corresponding methods in
+`frappe_scenario.api.ai`. Approved artifacts are cached by input, provider,
+model, and prompt fingerprint, so an identical review is reused without
+another model call.
+
 ## Tests
 
 Pure tests need no site:
@@ -227,8 +243,9 @@ develop. Each compatibility Bench must test the exact same committed revision.
 
 - Only the smoke-scale HVAC distribution vertical slice is proven end to end.
 - OpenAI adapter discovery, encrypted configuration, structured request
-  execution, and reviewable AI Brief compilation are implemented. The
-  plausibility-review and grounded-tutor workflows remain subsequent batches.
+  execution, reviewable AI Brief compilation, and human-approved qualitative
+  plausibility review are implemented. The grounded-tutor workflow remains a
+  subsequent batch.
 - No Crispy Print or other third-party app code is modified or imported.
 - HRMS, manufacturing, projects, assets, lending, regional compliance, and
   broader archetypes remain future providers.
