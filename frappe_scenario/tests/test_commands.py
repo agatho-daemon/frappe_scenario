@@ -23,9 +23,9 @@ def test_specification_path_resolves_from_the_bench_root(monkeypatch, tmp_path):
 	monkeypatch.chdir(sites)
 	monkeypatch.setattr(commands.frappe.utils, "get_bench_path", lambda: str(tmp_path))
 
-	assert commands._resolve_specification_file(
-		"apps/frappe_scenario/examples/scenario.json"
-	) == str(specification)
+	assert commands._resolve_specification_file("apps/frappe_scenario/examples/scenario.json") == str(
+		specification
+	)
 
 
 def test_specification_path_accepts_absolute_and_current_directory_paths(monkeypatch, tmp_path):
@@ -44,6 +44,21 @@ def test_missing_specification_path_reports_both_search_locations(monkeypatch, t
 
 	with pytest.raises(click.BadParameter, match="current directory or Bench root"):
 		commands._resolve_specification_file("missing.json")
+
+
+def test_setup_choices_file_must_contain_a_json_object(tmp_path):
+	valid = tmp_path / "valid.json"
+	valid.write_text('{"intent": "Quick Demo"}', encoding="utf-8")
+	invalid = tmp_path / "invalid.json"
+	invalid.write_text("[]", encoding="utf-8")
+
+	assert commands._read_choices_file(str(valid)) == {"intent": "Quick Demo"}
+	with pytest.raises(click.BadParameter, match="must be an object"):
+		commands._read_choices_file(str(invalid))
+
+
+def test_setup_command_is_registered():
+	assert "setup" in commands.scenario.commands
 
 
 @pytest.mark.parametrize(

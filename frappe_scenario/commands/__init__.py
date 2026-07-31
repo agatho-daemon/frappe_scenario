@@ -165,6 +165,75 @@ def preflight(context: Any, as_json: bool) -> None:
 			click.echo(f"    $ {remediation}")
 
 
+@scenario.command("setup")
+@click.option(
+	"--choices",
+	"choices_file",
+	type=click.Path(dir_okay=False),
+	help="Read wizard choices from a JSON file instead of prompting.",
+)
+@click.option("--yes", is_flag=True, help="Approve the displayed setup proposal.")
+@click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
+@pass_context
+def setup_command(
+	context: Any,
+	choices_file: str | None,
+	yes: bool,
+	as_json: bool,
+) -> None:
+	"""Resume guided scenario setup using the same service as Desk."""
+	with _site(context):
+		from frappe_scenario.core.setup_wizard import (
+			approve_setup,
+			save_choices,
+			wizard_context,
+		)
+
+		model = wizard_context()
+		choices = (
+			_read_choices_file(_resolve_specification_file(choices_file))
+			if choices_file
+			else _prompt_setup_choices(model)
+		)
+		result = save_choices(
+			choices,
+			expected_version=int(model["onboarding"]["state_version"]),
+		)
+		frappe.db.commit()
+		if not as_json:
+			_print_setup_proposal(result["proposal"])
+
+		if not result["proposal"]["approvable"]:
+			if as_json:
+				click.echo(json.dumps(result, indent="\t", default=str))
+			raise click.ClickException("Resolve blocking prerequisites before approving setup.")
+		if not yes and not click.confirm(
+			"Approve these setup changes for the next onboarding phase?",
+			default=False,
+		):
+			if as_json:
+				click.echo(json.dumps(result, indent="\t", default=str))
+			else:
+				click.echo("Choices and preview saved; no setup was approved or executed.")
+			return
+
+		approved = approve_setup(
+			expected_version=int(result["onboarding"]["state_version"]),
+		)
+		frappe.db.commit()
+
+	if as_json:
+		click.echo(json.dumps(approved, indent="\t", default=str))
+	else:
+		click.echo(
+			click.style(
+				"Setup proposal approved. No ERPNext settings or business records were changed.",
+				fg="green",
+				bold=True,
+			)
+		)
+
+
 # -- specification -------------------------------------------------------------
 @scenario.command("validate-spec")
 @click.argument("specification_file", type=click.Path(dir_okay=False))
@@ -428,6 +497,126 @@ def _resolve_specification_file(value: str) -> str:
 		f"File {value!r} does not exist relative to the current directory or Bench root.",
 		param_hint="SPECIFICATION_FILE",
 	)
+
+
+def _read_choices_file(path: str) -> dict[str, Any]:
+	try:
+		payload = json.loads(Path(path).read_text(encoding="utf-8"))
+	except (OSError, ValueError) as exception:
+		raise click.BadParameter(
+			f"Cannot read choices JSON: {exception}", param_hint="--choices"
+		) from exception
+	if not isinstance(payload, dict):
+		raise click.BadParameter("Choices JSON must be an object.", param_hint="--choices")
+	return payload
+
+
+def _prompt_setup_choices(model: dict[str, Any]) -> dict[str, Any]:
+	defaults = model["choices"]
+	catalog = model["catalog"]
+	click.echo("Answer the guided questions. Press Enter to accept each recommended default.")
+	intent = click.prompt(
+		"Purpose",
+		type=click.Choice(catalog["intents"], case_sensitive=False),
+		default=defaults["intent"],
+	)
+	default_scale = {
+		"Learn ERPNext": "small",
+		"Quick Demo": "smoke",
+		"Presentation Demo": "small",
+		"Realistic Business": "medium",
+		"Custom/AI Brief": "custom",
+		"Developer/Test Dataset": "smoke",
+	}[intent]
+	archetypes = [entry["id"] for entry in catalog["archetypes"]]
+	choices = {
+		"intent": intent,
+		"archetype": click.prompt(
+			"Business archetype",
+			type=click.Choice(archetypes),
+			default=defaults["archetype"],
+		),
+		"depth": click.prompt(
+			"Operational depth",
+			type=click.Choice(catalog["depths"]),
+			default=defaults["depth"],
+		),
+		"company_strategy": click.prompt(
+			"Company strategy",
+			type=click.Choice(catalog["company_strategies"]),
+			default=defaults["company_strategy"],
+		),
+		"country": click.prompt("Country", default=defaults["country"]),
+		"language": click.prompt("Language", default=defaults["language"]),
+		"timezone": click.prompt("Timezone", default=defaults["timezone"]),
+		"currency": click.prompt("Currency", default=defaults["currency"]),
+		"company_name": click.prompt("Company name", default=defaults["company_name"]),
+		"company_abbr": click.prompt("Company abbreviation", default=defaults["company_abbr"]),
+		"chart_template": click.prompt("Chart of Accounts template", default=defaults["chart_template"]),
+		"account_numbering": click.prompt(
+			"Account numbering",
+			type=click.Choice(catalog["account_numbering"]),
+			default=defaults["account_numbering"],
+		),
+		"fiscal_year_start": click.prompt(
+			"Fiscal year start (YYYY-MM-DD)",
+			default=defaults["fiscal_year_start"],
+		),
+		"perpetual_inventory": click.confirm(
+			"Enable perpetual inventory?",
+			default=bool(defaults["perpetual_inventory"]),
+		),
+		"valuation_method": click.prompt(
+			"Stock valuation method",
+			type=click.Choice(catalog["valuation_methods"]),
+			default=defaults["valuation_method"],
+		),
+		"warehouse_name": click.prompt("Default warehouse", default=defaults["warehouse_name"]),
+		"cost_center_name": click.prompt("Default cost center", default=defaults["cost_center_name"]),
+		"scale": click.prompt(
+			"Dataset scale",
+			type=click.Choice(["smoke", "small", "medium", "large", "custom"]),
+			default=default_scale,
+		),
+		"complexity": click.prompt(
+			"Dataset complexity",
+			type=click.Choice(catalog["depths"]),
+			default=defaults["complexity"],
+		),
+	}
+	scale_defaults = {
+		"smoke": 2,
+		"small": 3,
+		"medium": 24,
+		"large": 60,
+		"custom": defaults["history_months"],
+	}
+	choices["history_months"] = click.prompt(
+		"History in months",
+		type=click.IntRange(1, 60),
+		default=scale_defaults[choices["scale"]],
+	)
+	return choices
+
+
+def _print_setup_proposal(proposal: dict[str, Any]) -> None:
+	estimate = proposal["record_estimate"]
+	click.echo(
+		click.style(
+			f"Preview: {proposal['mutation_count']} setup changes; approximately "
+			f"{estimate['approximate']} records ({estimate['minimum']}-{estimate['maximum']}).",
+			bold=True,
+		)
+	)
+	for mutation in proposal["mutations"]:
+		click.echo(
+			f"  {mutation['action']:6} {mutation['target']}.{mutation['field']}: "
+			f"{mutation['current']!r} -> {mutation['proposed']!r}"
+		)
+	for warning in proposal["warnings"]:
+		click.echo(click.style(f"  warning: {warning}", fg="yellow"))
+	for blocker in proposal["blockers"]:
+		click.echo(click.style(f"  blocker: {blocker['message']}", fg="red"))
 
 
 class _site:

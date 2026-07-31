@@ -14,6 +14,11 @@ from frappe_scenario.core.onboarding import (
 	json_fields,
 	transition_onboarding,
 )
+from frappe_scenario.core.setup_wizard import (
+	approve_setup,
+	save_choices,
+	wizard_context,
+)
 
 
 @frappe.whitelist()
@@ -37,6 +42,35 @@ def transition(
 		except ValueError:
 			frappe.throw("Onboarding updates must contain valid JSON.", frappe.ValidationError)
 	return _serialize(transition_onboarding(target, updates=updates, expected_version=expected_version))
+
+
+@frappe.whitelist()
+def get_wizard() -> dict[str, Any]:
+	"""Return the resumable wizard model for Desk."""
+	frappe.only_for("System Manager")
+	return wizard_context()
+
+
+@frappe.whitelist(methods=["POST"])
+def save_wizard_choices(
+	choices: str | dict[str, Any],
+	expected_version: int,
+) -> dict[str, Any]:
+	"""Validate and preview choices without applying ERPNext setup."""
+	frappe.only_for("System Manager")
+	if isinstance(choices, str):
+		try:
+			choices = json.loads(choices)
+		except ValueError:
+			frappe.throw("Onboarding choices must contain valid JSON.", frappe.ValidationError)
+	return save_choices(choices, expected_version=int(expected_version))
+
+
+@frappe.whitelist(methods=["POST"])
+def approve_setup_plan(expected_version: int) -> dict[str, Any]:
+	"""Record explicit setup approval without executing setup."""
+	frappe.only_for("System Manager")
+	return approve_setup(expected_version=int(expected_version))
 
 
 def _serialize(doc: Any) -> dict[str, Any]:

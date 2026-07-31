@@ -21,6 +21,10 @@
   "resolved_specification",
   "preview",
   "scenario_run",
+  "section_approval",
+  "setup_approved",
+  "setup_approved_by",
+  "setup_approved_on",
   "section_progress",
   "progress",
   "errors",
@@ -135,6 +139,31 @@
    "fieldtype": "Link",
    "label": "Scenario Run",
    "options": "Scenario Run",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_approval",
+   "fieldtype": "Section Break",
+   "label": "Approval"
+  },
+  {
+   "default": "0",
+   "fieldname": "setup_approved",
+   "fieldtype": "Check",
+   "label": "Setup Approved",
+   "read_only": 1
+  },
+  {
+   "fieldname": "setup_approved_by",
+   "fieldtype": "Link",
+   "label": "Setup Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "setup_approved_on",
+   "fieldtype": "Datetime",
+   "label": "Setup Approved On",
    "read_only": 1
   },
   {

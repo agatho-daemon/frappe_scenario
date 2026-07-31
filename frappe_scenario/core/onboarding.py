@@ -18,7 +18,7 @@ from frappe.utils import now_datetime
 from frappe_scenario.core.preflight import BLOCKING, preflight_report
 
 DOCTYPE = "Scenario Onboarding"
-ROUTE = "/app/scenario-onboarding"
+ROUTE = "/app/scenario-setup"
 
 NEEDS_PREREQUISITES = "Needs Prerequisites"
 NEEDS_SETUP = "Needs Setup"
@@ -141,6 +141,9 @@ def editable_workflow_fields() -> set[str]:
 		"errors",
 		"scenario_run",
 		"last_preflight",
+		"setup_approved",
+		"setup_approved_by",
+		"setup_approved_on",
 	}
 
 

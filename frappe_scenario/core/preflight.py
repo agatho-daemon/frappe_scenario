@@ -65,6 +65,7 @@ def preflight_report() -> dict[str, Any]:
 	fiscal_years = _fiscal_years() if erpnext_installed else []
 	accounts = _account_state(companies) if erpnext_installed else _empty_account_state()
 	stock = _stock_state(companies) if erpnext_installed else {}
+	organization = _organization_state() if erpnext_installed else {"warehouses": [], "cost_centers": []}
 	existing_data = _existing_business_data(erpnext_installed)
 
 	_add_setup_findings(
@@ -99,6 +100,7 @@ def preflight_report() -> dict[str, Any]:
 		"fiscal_years": fiscal_years,
 		"chart_of_accounts": accounts,
 		"stock": stock,
+		"organization": organization,
 		"safety": safety,
 		"existing_business_data": existing_data,
 	}
@@ -393,6 +395,29 @@ def _stock_state(companies: list[dict[str, Any]]) -> dict[str, Any]:
 		for company in companies
 	}
 	return settings
+
+
+def _organization_state() -> dict[str, list[dict[str, Any]]]:
+	return {
+		"warehouses": [
+			dict(row)
+			for row in frappe.get_all(
+				"Warehouse",
+				filters={"disabled": 0},
+				fields=["name", "warehouse_name", "company", "is_group", "disabled"],
+				order_by="company, name",
+			)
+		],
+		"cost_centers": [
+			dict(row)
+			for row in frappe.get_all(
+				"Cost Center",
+				filters={"disabled": 0},
+				fields=["name", "cost_center_name", "company", "is_group", "disabled"],
+				order_by="company, name",
+			)
+		],
+	}
 
 
 def _existing_business_data(erpnext_installed: bool) -> dict[str, Any]:

@@ -1,0 +1,31 @@
+.scenario-setup-wizard {
+	max-width: 1100px;
+	padding: 1.5rem;
+}
+
+.scenario-setup-intro,
+.scenario-setup-wizard section {
+	background: var(--card-bg);
+	border: 1px solid var(--border-color);
+	border-radius: var(--border-radius-lg);
+	margin-bottom: 1rem;
+	padding: 1.25rem;
+}
+
+.scenario-setup-wizard h4 {
+	margin-bottom: 1rem;
+}
+
+.scenario-control {
+	margin-bottom: 1rem;
+}
+
+.scenario-mutation {
+	border-bottom: 1px solid var(--border-color);
+	font-family: var(--font-stack);
+	padding: 0.5rem 0;
+}
+
+.scenario-warnings {
+	margin-top: 1rem;
+}

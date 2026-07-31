@@ -56,6 +56,23 @@ preflight. It does not prompt, initialize ERPNext, or generate business data.
 The first System Manager who signs into Desk is routed once to the incomplete
 onboarding record; other users and completed onboarding sessions are unaffected.
 
+Continue onboarding in Desk at `/app/scenario-setup`, or use its CLI twin:
+
+```bash
+bench scenario setup
+```
+
+Both clients save the same validated choices and show proposed ERPNext setup
+changes plus a dataset record estimate before asking for approval. For a
+repeatable noninteractive preview and approval, pass a complete JSON object:
+
+```bash
+bench scenario setup --choices onboarding-choices.json --yes --json
+```
+
+At the current implementation boundary, approval is recorded for the next
+phase; it does not yet initialize ERPNext or generate business records.
+
 ## Quick start
 
 Scenario commands use the Bench default site configured by `bench use`.
