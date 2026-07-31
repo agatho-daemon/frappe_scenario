@@ -114,8 +114,18 @@ def reset_module(run_name: str, path_key: str) -> dict[str, Any]:
 	return _reset(run_name, scope={"path_key": path_key})
 
 
-def restore_scenario(run_name: str, *, checkpoint_name: str | None = None) -> dict[str, Any]:
-	return _reset(run_name, checkpoint_name=checkpoint_name, scope={})
+def restore_scenario(
+	run_name: str,
+	*,
+	checkpoint_name: str | None = None,
+	reset_progress: bool = True,
+) -> dict[str, Any]:
+	return _reset(
+		run_name,
+		checkpoint_name=checkpoint_name,
+		scope={},
+		reset_progress=reset_progress,
+	)
 
 
 def _reset(
@@ -123,6 +133,7 @@ def _reset(
 	*,
 	scope: dict[str, str],
 	checkpoint_name: str | None = None,
+	reset_progress: bool = True,
 ) -> dict[str, Any]:
 	run = _completed_run(run_name)
 	checkpoint = _checkpoint(run.name, checkpoint_name)
@@ -145,7 +156,7 @@ def _reset(
 		# when one record is deleted, cancelled, or externally constrained.
 		frappe.db.rollback(save_point=reset_savepoint)
 		results = []
-	else:
+	elif reset_progress:
 		_reset_progress(run.name, scope)
 	frappe.db.commit()
 	return {
@@ -183,7 +194,13 @@ def _capture(run: Any) -> dict[str, Any]:
 def _document_values(doc: Any) -> dict[str, Any]:
 	values: dict[str, Any] = {}
 	for field in doc.meta.fields:
-		if field.fieldname in VOLATILE_FIELDS or field.fieldtype in {"Section Break", "Column Break", "Tab Break", "HTML", "Button"}:
+		if field.fieldname in VOLATILE_FIELDS or field.fieldtype in {
+			"Section Break",
+			"Column Break",
+			"Tab Break",
+			"HTML",
+			"Button",
+		}:
 			continue
 		value = doc.get(field.fieldname)
 		if field.fieldtype == "Table":
@@ -238,10 +255,15 @@ def _change_counts(changes: list[dict[str, Any]]) -> dict[str, int]:
 def _restore_record(reference: str, saved: dict[str, Any]) -> dict[str, Any]:
 	doctype, name = reference.split("/", 1)
 	if not frappe.db.exists(doctype, name):
-		return _blocked(reference, "The scenario-owned record was deleted; it cannot be recreated safely in isolation.")
+		return _blocked(
+			reference, "The scenario-owned record was deleted; it cannot be recreated safely in isolation."
+		)
 	doc = frappe.get_doc(doctype, name)
 	if int(doc.docstatus) != int(saved["docstatus"]):
-		return _blocked(reference, "Its Draft/Submitted/Cancelled state changed. Restore dependencies or regenerate the scenario.")
+		return _blocked(
+			reference,
+			"Its Draft/Submitted/Cancelled state changed. Restore dependencies or regenerate the scenario.",
+		)
 	current = _document_values(doc)
 	changed = [field for field in saved["values"] if current.get(field) != saved["values"].get(field)]
 	if not changed:
@@ -274,7 +296,11 @@ def _restore_record(reference: str, saved: dict[str, Any]) -> dict[str, Any]:
 
 def _scope_references(run: Any, scope: dict[str, str]) -> set[str]:
 	path = get_path(scope["path_key"])
-	lessons = [lesson for lesson in path["lessons"] if not scope.get("lesson_key") or lesson["key"] == scope["lesson_key"]]
+	lessons = [
+		lesson
+		for lesson in path["lessons"]
+		if not scope.get("lesson_key") or lesson["key"] == scope["lesson_key"]
+	]
 	if not lessons:
 		frappe.throw(_("Unknown lesson for this learning path."), frappe.DoesNotExistError)
 	manifest = load_manifest(run)
@@ -297,9 +323,15 @@ def _scope_references(run: Any, scope: dict[str, str]) -> set[str]:
 	if scope["path_key"] == "foundations":
 		capabilities.update({"erpnext.foundation.company", "erpnext.foundation.accounts"})
 	if scope["path_key"] == "crm-parties":
-		capabilities.update({"erpnext.parties.customers", "erpnext.parties.suppliers", "erpnext.parties.leads"})
+		capabilities.update(
+			{"erpnext.parties.customers", "erpnext.parties.suppliers", "erpnext.parties.leads"}
+		)
 	for capability in capabilities:
-		references.update(record.reference for record in manifest.for_capability(capability) if record.operation == "created")
+		references.update(
+			record.reference
+			for record in manifest.for_capability(capability)
+			if record.operation == "created"
+		)
 	owned = {record.reference for record in manifest.created()}
 	return references & owned
 
@@ -312,14 +344,18 @@ def _reset_progress(run_name: str, scope: dict[str, str]) -> None:
 		progress = frappe.get_doc("Scenario Learner Progress", name)
 		if scope.get("lesson_key"):
 			prefix = f"{scope['lesson_key']}/"
-			completed = [item for item in json.loads(progress.completed_steps or "[]") if not item.startswith(prefix)]
+			completed = [
+				item for item in json.loads(progress.completed_steps or "[]") if not item.startswith(prefix)
+			]
 			progress.completed_steps = json.dumps(completed)
 			progress.status = "In Progress" if completed else "Not Started"
 			progress.current_step = None
 			progress.completed_at = None
 			progress.save(ignore_permissions=True)
 		else:
-			frappe.delete_doc("Scenario Learner Progress", name, ignore_permissions=True, delete_permanently=True)
+			frappe.delete_doc(
+				"Scenario Learner Progress", name, ignore_permissions=True, delete_permanently=True
+			)
 
 
 def _checkpoint(run_name: str, name: str | None) -> Any:
@@ -361,4 +397,6 @@ def _blocked(reference: str, message: str, **details: Any) -> dict[str, Any]:
 
 
 def _external_message(exception: Exception) -> str:
-	return _("Frappe refused the reset, usually because another record depends on this one: {0}").format(str(exception))
+	return _("Frappe refused the reset, usually because another record depends on this one: {0}").format(
+		str(exception)
+	)

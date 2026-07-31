@@ -30,6 +30,12 @@ from frappe_scenario.core.experimentation import (
 )
 from frappe_scenario.core.learning import learning_home, verify_step
 from frappe_scenario.core.narrative import explain_record
+from frappe_scenario.core.troubleshooting import (
+	activate_problem,
+	check_diagnosis,
+	lab_home,
+	restore_case,
+)
 
 pytestmark = pytest.mark.erpnext_site
 
@@ -288,6 +294,61 @@ def test_named_checkpoint_can_restore_a_later_owned_state(generated):
 	assert not baseline["blockers"]
 
 
+def test_troubleshooting_lab_injects_checks_and_restores_a_pricing_problem(generated):
+	import frappe
+
+	home = lab_home(generated["run_id"])
+	pricing = next(problem for problem in home["problems"] if problem["key"] == "pricing-error")
+	assert pricing["availability"]["available"]
+
+	case = activate_problem(generated["run_id"], "pricing-error")
+	target = case["target"]
+	injected_rate = frappe.db.get_value(target["doctype"], target["name"], "price_list_rate")
+	wrong = check_diagnosis(case["name"], "wrong-uom")
+	assert not wrong["passed"]
+	assert wrong["hints"]
+	correct = check_diagnosis(case["name"], "price-below-cost")
+	assert correct["passed"]
+
+	restored = restore_case(case["name"])
+	assert not restored["blockers"]
+	assert frappe.db.get_value(target["doctype"], target["name"], "price_list_rate") > injected_rate
+	assert lab_home(generated["run_id"])["active_case"] is None
+
+
+def test_troubleshooting_lab_removes_its_unallocated_payment_draft(generated):
+	import frappe
+
+	home = lab_home(generated["run_id"])
+	problem = next(problem for problem in home["problems"] if problem["key"] == "unreconciled-payment")
+	if not problem["availability"]["available"]:
+		pytest.skip(problem["availability"]["message"])
+	case = activate_problem(generated["run_id"], "unreconciled-payment")
+	assert case["target"]["doctype"] == "Payment Entry"
+	assert frappe.db.exists("Payment Entry", case["target"]["name"])
+
+	restored = restore_case(case["name"])
+	assert not restored["blockers"]
+	assert not frappe.db.exists("Payment Entry", case["target"]["name"])
+
+
+@pytest.mark.parametrize(
+	"problem_key",
+	["overdue-account", "partial-delivery", "stock-shortage", "credit-limit-breach", "posting-period"],
+)
+def test_every_remaining_troubleshooting_injector_can_be_restored(generated, problem_key):
+	home = lab_home(generated["run_id"])
+	problem = next(problem for problem in home["problems"] if problem["key"] == problem_key)
+	if not problem["availability"]["available"]:
+		pytest.skip(problem["availability"]["message"])
+	case = activate_problem(generated["run_id"], problem_key)
+
+	result = restore_case(case["name"])
+
+	assert not result["blockers"]
+	assert result["case"]["status"] == "Restored"
+
+
 def test_validation_findings_carry_enough_to_act_on(generated):
 	for issue in validate_run(generated["run_id"])["issues"]:
 		assert issue["rule"]
@@ -347,9 +408,15 @@ def test_the_same_seed_reproduces_the_same_dataset(erpnext_site, smoke_specifica
 	The second run can only match if the first one was removed without residue,
 	so this exercises generation and cleanup together.
 	"""
+	import frappe
+
 	first_projection = canonical_projection(load_manifest(generated["run_id"]))
+	active_lab = activate_problem(generated["run_id"], "stock-shortage")
+	lab_target = active_lab["target"]
 	first_cleanup = cleanup_run(generated["run_id"])
 	assert first_cleanup["blockers"] == []
+	assert not frappe.db.exists(lab_target["doctype"], lab_target["name"])
+	assert not frappe.db.exists("Scenario Lab Case", active_lab["name"])
 
 	second = _generate(smoke_specification)
 	try:
@@ -361,7 +428,18 @@ def test_the_same_seed_reproduces_the_same_dataset(erpnext_site, smoke_specifica
 		assert cleanup_run(second["run_id"])["blockers"] == []
 
 
-@pytest.mark.parametrize("doctype", ["Company", "Customer", "Supplier", "Item", "GL Entry", "Scenario Event"])
+@pytest.mark.parametrize(
+	"doctype",
+	[
+		"Company",
+		"Customer",
+		"Supplier",
+		"Item",
+		"GL Entry",
+		"Scenario Event",
+		"Scenario Lab Case",
+	],
+)
 def test_cleanup_leaves_nothing_behind(generated, doctype):
 	"""Runs after the determinism test, by which point both runs are cleaned."""
 	import frappe

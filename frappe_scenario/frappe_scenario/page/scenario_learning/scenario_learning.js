@@ -39,6 +39,9 @@ class ScenarioLearning {
 		this.page.add_inner_button(__("What did I change?"), () => this.show_changes());
 		this.page.add_inner_button(__("Save checkpoint"), () => this.save_checkpoint());
 		this.page.add_inner_button(__("Restore scenario"), () => this.restore_scenario());
+		this.page.add_inner_button(__("Troubleshooting Lab"), () => {
+			frappe.set_route("scenario-troubleshooting", { run: this.run_name });
+		});
 		this.body.empty();
 		$(`<div class="mb-4">
 			<h3>${frappe.utils.escape_html(this.model.run.company || this.model.run.title)}</h3>

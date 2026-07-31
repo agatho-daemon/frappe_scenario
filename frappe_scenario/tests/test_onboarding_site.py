@@ -50,3 +50,9 @@ def test_builtin_learning_paths_are_synchronized(frappe_site):
 	from frappe_scenario.core.learning_catalog import PATHS
 
 	assert frappe.db.count("Scenario Learning Path", {"enabled": 1}) == len(PATHS)
+
+
+def test_troubleshooting_metadata_is_installed(frappe_site):
+	import frappe
+
+	assert frappe.db.table_exists("Scenario Lab Case")

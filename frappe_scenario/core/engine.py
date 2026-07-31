@@ -710,6 +710,19 @@ def cleanup_run(run_name: str, *, allow_non_disposable: bool = False) -> dict[st
 	results: list[dict[str, Any]] = []
 	blockers: list[dict[str, Any]] = []
 
+	from frappe_scenario.core.troubleshooting import discard_lab_cases
+
+	lab_blockers = discard_lab_cases(run.name)
+	if lab_blockers:
+		run.db_set("status", STATUS_FAILED, update_modified=False)
+		run.db_set(
+			"cleanup_summary",
+			json.dumps({"results": [], "blockers": lab_blockers}, indent="\t", default=str),
+			update_modified=False,
+		)
+		frappe.db.commit()
+		return {"run_id": run.name, "status": STATUS_FAILED, "results": [], "blockers": lab_blockers}
+
 	# A validation finding points at the document it was raised against, so the
 	# run's own findings would otherwise hold that document in place.
 	_discard_validation_results(run.name)

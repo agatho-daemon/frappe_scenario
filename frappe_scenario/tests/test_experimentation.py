@@ -5,7 +5,6 @@ import pytest
 
 from frappe_scenario.core.experimentation import _change_counts, _diff
 
-
 pytestmark = pytest.mark.pure
 
 
