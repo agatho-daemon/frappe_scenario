@@ -123,6 +123,48 @@ def describe(context: Any, as_json: bool) -> None:
 		click.echo(f"  {name}: {profile}")
 
 
+# -- readiness -----------------------------------------------------------------
+@scenario.command("preflight")
+@click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
+@pass_context
+def preflight(context: Any, as_json: bool) -> None:
+	"""Inspect ERPNext and site readiness without changing anything."""
+	with _site(context):
+		from frappe_scenario.core.preflight import preflight_report
+
+		report = preflight_report()
+
+	if as_json:
+		click.echo(json.dumps(report, indent="\t", default=str))
+		return
+
+	click.echo(
+		click.style(
+			f"Frappe Scenario preflight: {report['site']} — {report['status']}",
+			bold=True,
+		)
+	)
+	for finding in report["findings"]:
+		colour = {
+			"ready": "green",
+			"configurable": "yellow",
+			"blocking": "red",
+			"destructive-risk": "red",
+		}[finding["classification"]]
+		click.echo(
+			click.style(
+				f"  {finding['classification']:16} {finding['message']}",
+				fg=colour,
+			)
+		)
+		remediation = finding.get("remediation")
+		if isinstance(remediation, list):
+			for command in remediation:
+				click.echo(f"    $ {command}")
+		elif remediation:
+			click.echo(f"    $ {remediation}")
+
+
 # -- specification -------------------------------------------------------------
 @scenario.command("validate-spec")
 @click.argument("specification_file", type=click.Path(dir_okay=False))

@@ -40,10 +40,28 @@ bench migrate
 Frappe and ERPNext are managed by Bench. Faker, JSON Schema validation, and
 YAML parsing are declared application dependencies.
 
+ERPNext is a required app. When its checkout is already in the Bench,
+`install-app frappe_scenario` installs ERPNext first if necessary. If the
+checkout is absent, fetch it explicitly and retry; Frappe Scenario never fetches
+repositories from an installation hook:
+
+```bash
+bench get-app erpnext
+bench install-app erpnext
+bench install-app frappe_scenario
+```
+
 ## Quick start
 
 Scenario commands use the Bench default site configured by `bench use`.
 Supply `--site <site-name>` before `scenario` to target another site explicitly.
+
+Inspect site readiness without changing any records or settings:
+
+```bash
+bench scenario preflight
+bench scenario preflight --json
+```
 
 Inspect the installed capability contract:
 

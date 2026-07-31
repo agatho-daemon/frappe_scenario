@@ -1,3 +1,5 @@
+from pathlib import Path
+
 app_name = "frappe_scenario"
 app_title = "Frappe Scenario"
 app_publisher = "Agathodaemon"
@@ -24,7 +26,11 @@ scenario_providers = [
 # Apps
 # ------------------
 
-# required_apps = []
+# Frappe resolves unknown plain dependency names through an online repository
+# lookup before ``before_install`` runs. Declare ERPNext when its checkout is
+# present; otherwise the install guard below stops with explicit recovery steps.
+_erpnext_checkout = Path(__file__).resolve().parents[2] / "erpnext"
+required_apps = ["erpnext"] if _erpnext_checkout.is_dir() else []
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -98,7 +104,7 @@ scenario_providers = [
 # Installation
 # ------------
 
-# before_install = "frappe_scenario.install.before_install"
+before_install = "frappe_scenario.install.before_install"
 # after_install = "frappe_scenario.install.after_install"
 
 # Uninstallation
