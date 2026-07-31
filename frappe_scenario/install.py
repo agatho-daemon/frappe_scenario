@@ -19,3 +19,10 @@ def before_install() -> None:
 		"ERPNext is not available in this Bench. Frappe Scenario does not fetch "
 		f"repositories during installation.\nRun:\n{commands}"
 	)
+
+
+def after_install() -> None:
+	"""Create the resumable onboarding record without performing setup."""
+	from frappe_scenario.core.onboarding import ensure_onboarding
+
+	ensure_onboarding()

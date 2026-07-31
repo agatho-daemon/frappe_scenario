@@ -51,6 +51,11 @@ bench install-app erpnext
 bench install-app frappe_scenario
 ```
 
+Installation creates a resumable `Scenario Onboarding` record from a read-only
+preflight. It does not prompt, initialize ERPNext, or generate business data.
+The first System Manager who signs into Desk is routed once to the incomplete
+onboarding record; other users and completed onboarding sessions are unaffected.
+
 ## Quick start
 
 Scenario commands use the Bench default site configured by `bench use`.

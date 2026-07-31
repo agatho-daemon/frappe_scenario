@@ -1,0 +1,204 @@
+{
+ "actions": [],
+ "creation": "2026-07-31 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "status",
+  "state_version",
+  "initialized_on",
+  "completed_on",
+  "section_choices",
+  "intent",
+  "archetype",
+  "column_break_choices",
+  "depth",
+  "scale",
+  "section_setup",
+  "setup_choices",
+  "last_preflight",
+  "section_scenario",
+  "resolved_specification",
+  "preview",
+  "scenario_run",
+  "section_progress",
+  "progress",
+  "errors",
+  "section_routing",
+  "initial_route_pending",
+  "first_routed_user",
+  "first_routed_on"
+ ],
+ "fields": [
+  {
+   "default": "Needs Prerequisites",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Needs Prerequisites\nNeeds Setup\nNeeds Scenario\nPreview\nGenerating\nReady\nFailed",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "state_version",
+   "fieldtype": "Int",
+   "label": "State Version",
+   "read_only": 1
+  },
+  {
+   "fieldname": "initialized_on",
+   "fieldtype": "Datetime",
+   "label": "Initialized On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completed_on",
+   "fieldtype": "Datetime",
+   "label": "Completed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_choices",
+   "fieldtype": "Section Break",
+   "label": "Scenario Choices"
+  },
+  {
+   "fieldname": "intent",
+   "fieldtype": "Data",
+   "label": "Intent",
+   "read_only": 1
+  },
+  {
+   "fieldname": "archetype",
+   "fieldtype": "Data",
+   "label": "Archetype",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_choices",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "depth",
+   "fieldtype": "Data",
+   "label": "Depth",
+   "read_only": 1
+  },
+  {
+   "fieldname": "scale",
+   "fieldtype": "Data",
+   "label": "Scale",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_setup",
+   "fieldtype": "Section Break",
+   "label": "ERPNext Setup"
+  },
+  {
+   "fieldname": "setup_choices",
+   "fieldtype": "Code",
+   "label": "Setup Choices",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_preflight",
+   "fieldtype": "Code",
+   "label": "Last Preflight",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_scenario",
+   "fieldtype": "Section Break",
+   "label": "Scenario"
+  },
+  {
+   "fieldname": "resolved_specification",
+   "fieldtype": "Code",
+   "label": "Resolved Specification",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "preview",
+   "fieldtype": "Code",
+   "label": "Preview",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "scenario_run",
+   "fieldtype": "Link",
+   "label": "Scenario Run",
+   "options": "Scenario Run",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_progress",
+   "fieldtype": "Section Break",
+   "label": "Progress and Errors"
+  },
+  {
+   "fieldname": "progress",
+   "fieldtype": "Code",
+   "label": "Progress",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "errors",
+   "fieldtype": "Code",
+   "label": "Errors",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_routing",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Routing"
+  },
+  {
+   "default": "1",
+   "fieldname": "initial_route_pending",
+   "fieldtype": "Check",
+   "label": "Initial Route Pending",
+   "read_only": 1
+  },
+  {
+   "fieldname": "first_routed_user",
+   "fieldtype": "Link",
+   "label": "First Routed User",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "first_routed_on",
+   "fieldtype": "Datetime",
+   "label": "First Routed On",
+   "read_only": 1
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-07-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Scenario",
+ "name": "Scenario Onboarding",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
