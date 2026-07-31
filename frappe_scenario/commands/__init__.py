@@ -275,6 +275,7 @@ def quick_demo_command(
 		result = generate_quick_demo(
 			expected_version=int(onboarding.state_version),
 			allow_non_disposable=allow_non_disposable,
+			accept_quality_warnings=True,
 		)
 
 	if as_json:

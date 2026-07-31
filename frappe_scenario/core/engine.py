@@ -567,6 +567,7 @@ def get_status(run_name: str) -> dict[str, Any]:
 		"manifest_summary": json.loads(run.manifest_summary or "{}"),
 		"validation_summary": json.loads(run.validation_summary or "{}"),
 		"outcomes": json.loads(run.outcome_summary or "{}"),
+		"quality_report": run.quality_report,
 		"warnings": json.loads(run.warnings or "[]"),
 		"error": json.loads(run.error) if run.error else None,
 		"steps": [
@@ -622,9 +623,42 @@ def validate_run(run_name: str) -> dict[str, Any]:
 	_store_validation_results(run, result)
 	summary = result.as_dict()
 	run.db_set("validation_summary", json.dumps(summary, indent="\t", default=str), update_modified=False)
+	from frappe_scenario.core.quality import assess_generated, persist_generated_report
+
+	quality = assess_generated(
+		specification=resolved,
+		capabilities=context.published_capabilities,
+		validation=summary,
+		regional_records=_quality_regional_records(manifest),
+	)
+	quality["name"] = persist_generated_report(run, quality)
 	frappe.db.commit()
 
-	return {"run_id": run.name, **summary}
+	return {"run_id": run.name, "quality": quality, **summary}
+
+
+def _quality_regional_records(manifest: Manifest) -> dict[str, list[dict[str, Any]]]:
+	records: dict[str, list[dict[str, Any]]] = {"addresses": [], "contacts": []}
+	for record in manifest.created():
+		if record.doctype == "Address":
+			value = frappe.db.get_value(
+				"Address",
+				record.name,
+				["name", "address_line1", "city", "country"],
+				as_dict=True,
+			)
+			if value:
+				records["addresses"].append(dict(value))
+		elif record.doctype == "Contact":
+			value = frappe.db.get_value(
+				"Contact",
+				record.name,
+				["name", "email_id"],
+				as_dict=True,
+			)
+			if value:
+				records["contacts"].append(dict(value))
+	return records
 
 
 def _store_validation_results(run: Any, result: ValidationResult) -> None:

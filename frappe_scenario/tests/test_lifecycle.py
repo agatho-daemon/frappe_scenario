@@ -117,9 +117,20 @@ def test_every_manifest_record_actually_exists(generated):
 
 
 def test_the_generated_scenario_validates(generated):
+	import frappe
+
 	result = validate_run(generated["run_id"])
 	assert result["counts"]["error"] == 0, result["issues"]
 	assert result["passed"]
+	assert result["quality"]["passed"]
+	assert set(result["quality"]["scores"]) == {
+		"naming",
+		"regional_consistency",
+		"linkage",
+		"accounting",
+		"continuity",
+	}
+	assert frappe.db.exists("Scenario Quality Report", result["quality"]["name"])
 
 
 def test_quick_demo_exceptions_are_real_linked_erpnext_documents(generated):

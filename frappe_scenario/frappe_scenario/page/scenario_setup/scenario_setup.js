@@ -174,8 +174,28 @@ class ScenarioSetupWizard {
 					samples.variation,
 					samples.quality.passed ? __("passed") : __("needs review"),
 				])}</p>
+				<div class="scenario-quality-scores">
+					<h5>${__("Quality gates")} — ${samples.quality.overall_score}%</h5>
+					<p>${Object.entries(samples.quality.scores)
+						.map(
+							([dimension, score]) =>
+								`${frappe.utils.escape_html(
+									dimension.replaceAll("_", " ")
+								)}: <strong>${score}%</strong>`
+						)
+						.join(" · ")}</p>
+				</div>
 			</div>
 		`).appendTo(section);
+		samples.quality.findings.forEach((finding) => {
+			$(
+				`<div class="alert ${
+					finding.severity === "error" ? "alert-danger" : "alert-warning"
+				}">`
+			)
+				.text(`${finding.category}: ${finding.message}`)
+				.appendTo(section);
+		});
 		if (!proposal.mutations.length) {
 			mutations.append(
 				`<p class="text-muted">${__("No ERPNext setup changes proposed.")}</p>`
@@ -337,6 +357,7 @@ class ScenarioSetupWizard {
 				args: {
 					expected_version: this.model.onboarding.state_version,
 					allow_non_disposable: non_disposable ? 1 : 0,
+					accept_quality_warnings: 1,
 				},
 				freeze: true,
 				freeze_message: __("Generating linked ERPNext activity…"),

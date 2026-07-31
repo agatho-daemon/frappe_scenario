@@ -318,6 +318,7 @@ class ErpnextCatalogProvider(ScenarioProvider):
 				items.append(
 					{
 						"item_code": doc.name,
+						"item_name": doc.item_name,
 						"family": family.key,
 						"kind": family.kind,
 						"item_group": family.item_group,

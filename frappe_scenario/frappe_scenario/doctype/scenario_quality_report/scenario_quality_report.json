@@ -1,0 +1,103 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:scenario_run",
+ "creation": "2026-07-31 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "scenario_run",
+  "stage",
+  "status",
+  "overall_score",
+  "confirmation_required",
+  "section_scores",
+  "scores",
+  "findings"
+ ],
+ "fields": [
+  {
+   "fieldname": "scenario_run",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scenario Run",
+   "options": "Scenario Run",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "stage",
+   "fieldtype": "Select",
+   "label": "Stage",
+   "options": "Preview\nGenerated",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Ready\nNeeds Review\nBlocked",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "overall_score",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Overall Score",
+   "read_only": 1
+  },
+  {
+   "fieldname": "confirmation_required",
+   "fieldtype": "Check",
+   "label": "Confirmation Required",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_scores",
+   "fieldtype": "Section Break",
+   "label": "Quality Evidence"
+  },
+  {
+   "fieldname": "scores",
+   "fieldtype": "Code",
+   "label": "Dimension Scores",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "findings",
+   "fieldtype": "Code",
+   "label": "Findings",
+   "options": "JSON",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Scenario",
+ "name": "Scenario Quality Report",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "search_fields": "scenario_run,status",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "scenario_run"
+}

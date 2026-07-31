@@ -9,10 +9,11 @@ import json
 from typing import Any
 
 from frappe_scenario.archetypes import get_archetype
+from frappe_scenario.core.quality import assess_preview
 from frappe_scenario.core.random import RandomService
 from frappe_scenario.locales import get_country_pack
 from frappe_scenario.providers.support.naming import item_description, item_name
-from frappe_scenario.providers.support.realism import RealismPipeline, review_samples
+from frappe_scenario.providers.support.realism import RealismPipeline
 
 
 def representative_preview(choices: dict[str, Any]) -> dict[str, Any]:
@@ -95,7 +96,7 @@ def representative_preview(choices: dict[str, Any]) -> dict[str, Any]:
 		"products": products,
 		"transaction_stories": stories,
 	}
-	samples["quality"] = review_samples(samples)
+	samples["quality"] = assess_preview(samples)
 	return samples
 
 

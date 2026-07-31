@@ -45,6 +45,7 @@
   "warnings",
   "error",
   "outcome_summary",
+  "quality_report",
   "section_fingerprint",
   "canonical_hash",
   "structural_hash",
@@ -297,6 +298,13 @@
    "fieldtype": "Code",
    "label": "Outcome Summary",
    "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quality_report",
+   "fieldtype": "Link",
+   "label": "Quality Report",
+   "options": "Scenario Quality Report",
    "read_only": 1
   },
   {

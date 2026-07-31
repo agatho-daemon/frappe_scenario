@@ -65,12 +65,8 @@ def test_quick_demo_compilation_is_deterministic_and_requests_the_full_lifecycle
 
 
 def test_quick_demo_changes_seed_when_the_anchor_changes():
-	first = quick_demo.compile_quick_demo_specification(
-		_choices(), anchor_date=datetime.date(2026, 7, 30)
-	)
-	second = quick_demo.compile_quick_demo_specification(
-		_choices(), anchor_date=datetime.date(2026, 7, 31)
-	)
+	first = quick_demo.compile_quick_demo_specification(_choices(), anchor_date=datetime.date(2026, 7, 30))
+	second = quick_demo.compile_quick_demo_specification(_choices(), anchor_date=datetime.date(2026, 7, 31))
 
 	assert first["scenario"]["seed"] != second["scenario"]["seed"]
 
@@ -82,6 +78,16 @@ def test_quick_demo_execution_uses_the_approved_engine_path(monkeypatch):
 		bootstrap_completed=1,
 		scenario_run=None,
 		setup_choices=json.dumps(choices),
+		preview=json.dumps(
+			{
+				"representative_samples": {
+					"quality": {
+						"passed": True,
+						"confirmation_required": False,
+					}
+				}
+			}
+		),
 	)
 	preview = SimpleNamespace(state_version=5)
 	generating = SimpleNamespace(state_version=6)
@@ -126,6 +132,11 @@ def test_quick_demo_execution_uses_the_approved_engine_path(monkeypatch):
 		or {"run_id": name, "status": quick_demo.engine.STATUS_COMPLETED},
 	)
 	monkeypatch.setattr(
+		quick_demo.engine,
+		"validate_run",
+		lambda name: calls.append(("validate", name)) or {"passed": True, "quality": {"passed": True}},
+	)
+	monkeypatch.setattr(
 		quick_demo,
 		"transition_onboarding",
 		lambda *args, **kwargs: next(transitions),
@@ -138,6 +149,7 @@ def test_quick_demo_execution_uses_the_approved_engine_path(monkeypatch):
 		("create", "Wasaq Climate Solutions — Quick Demo"),
 		("approve", "SCN-RUN-1"),
 		("execute", "SCN-RUN-1"),
+		("validate", "SCN-RUN-1"),
 	]
 
 
@@ -160,3 +172,33 @@ def test_quick_demo_requires_quick_demo_intent(monkeypatch):
 
 	with pytest.raises(ValueError, match="requires the Quick Demo purpose"):
 		quick_demo.generate_quick_demo(expected_version=2)
+
+
+def test_quick_demo_requires_explicit_acceptance_of_preview_warnings(monkeypatch):
+	choices = _choices()
+	doc = SimpleNamespace(
+		state_version=3,
+		bootstrap_completed=1,
+		scenario_run=None,
+		setup_choices=json.dumps(choices),
+		preview=json.dumps(
+			{
+				"representative_samples": {
+					"quality": {
+						"passed": True,
+						"confirmation_required": True,
+					}
+				}
+			}
+		),
+	)
+	monkeypatch.setattr(quick_demo.frappe, "get_single", lambda doctype: doc)
+	monkeypatch.setattr(quick_demo, "_", lambda message: message)
+	monkeypatch.setattr(
+		quick_demo.frappe,
+		"throw",
+		lambda message, *args, **kwargs: (_ for _ in ()).throw(ValueError(message)),
+	)
+
+	with pytest.raises(ValueError, match="require explicit confirmation"):
+		quick_demo.generate_quick_demo(expected_version=3)

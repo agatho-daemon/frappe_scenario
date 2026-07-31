@@ -86,12 +86,14 @@ def initialize_erpnext(expected_version: int) -> dict[str, Any]:
 def generate_quick_demo_run(
 	expected_version: int,
 	allow_non_disposable: int | bool = False,
+	accept_quality_warnings: int | bool = False,
 ) -> dict[str, Any]:
 	"""Generate the approved Quick Demo through the normal scenario engine."""
 	frappe.only_for("System Manager")
 	return generate_quick_demo(
 		expected_version=int(expected_version),
 		allow_non_disposable=bool(int(allow_non_disposable)),
+		accept_quality_warnings=bool(int(accept_quality_warnings)),
 	)
 
 

@@ -93,6 +93,7 @@ def generate_quick_demo(
 	*,
 	expected_version: int,
 	allow_non_disposable: bool = False,
+	accept_quality_warnings: bool = False,
 ) -> dict[str, Any]:
 	"""Create, approve, and synchronously execute one onboarding Quick Demo run."""
 	doc = frappe.get_single(DOCTYPE)
@@ -113,6 +114,18 @@ def generate_quick_demo(
 	choices = validate_choices(_decode(doc.setup_choices))
 	if choices["intent"] != "Quick Demo":
 		frappe.throw(_("The Quick Demo generator requires the Quick Demo purpose."))
+	preview = _decode(doc.preview)
+	quality = (preview.get("representative_samples") or {}).get("quality") or {}
+	if not quality.get("passed", False):
+		frappe.throw(
+			_("Preview quality checks failed. Regenerate or correct the preview before generation."),
+			frappe.ValidationError,
+		)
+	if quality.get("confirmation_required") and not accept_quality_warnings:
+		frappe.throw(
+			_("Preview quality warnings require explicit confirmation before generation."),
+			frappe.ValidationError,
+		)
 	specification = compile_quick_demo_specification(choices)
 	execution_plan = engine.plan(
 		specification,
@@ -171,6 +184,10 @@ def generate_quick_demo(
 			run_name,
 			allow_non_disposable=allow_non_disposable,
 		)
+		if result["status"] == engine.STATUS_COMPLETED:
+			validation = engine.validate_run(run_name)
+			result["validation"] = validation
+			result["quality"] = validation["quality"]
 	except Exception as exception:
 		transition_onboarding(
 			FAILED,
@@ -179,7 +196,11 @@ def generate_quick_demo(
 		)
 		raise
 
-	target = READY if result["status"] == engine.STATUS_COMPLETED else FAILED
+	target = (
+		READY
+		if result["status"] == engine.STATUS_COMPLETED and result.get("quality", {}).get("passed", False)
+		else FAILED
+	)
 	updated = transition_onboarding(
 		target,
 		expected_version=int(generating_doc.state_version),
