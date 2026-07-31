@@ -9,6 +9,7 @@ from typing import Any
 
 import frappe
 
+from frappe_scenario.core.bootstrap import execute_approved_bootstrap
 from frappe_scenario.core.onboarding import (
 	DOCTYPE,
 	json_fields,
@@ -71,6 +72,13 @@ def approve_setup_plan(expected_version: int) -> dict[str, Any]:
 	"""Record explicit setup approval without executing setup."""
 	frappe.only_for("System Manager")
 	return approve_setup(expected_version=int(expected_version))
+
+
+@frappe.whitelist(methods=["POST"])
+def initialize_erpnext(expected_version: int) -> dict[str, Any]:
+	"""Apply an approved ERPNext foundation plan without generating scenario data."""
+	frappe.only_for("System Manager")
+	return execute_approved_bootstrap(expected_version=int(expected_version))
 
 
 def _serialize(doc: Any) -> dict[str, Any]:

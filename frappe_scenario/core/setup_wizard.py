@@ -278,6 +278,7 @@ def build_proposal(choices: dict[str, Any], report: dict[str, Any]) -> dict[str,
 		)
 
 	accounts = (report.get("chart_of_accounts") or {}).get("by_company", {}).get(choices["company_name"], {})
+	blockers_numbering = None
 	if not accounts.get("total"):
 		mutations.append(
 			{
@@ -292,6 +293,17 @@ def build_proposal(choices: dict[str, Any], report: dict[str, Any]) -> dict[str,
 				"reason": "The selected company has no Chart of Accounts.",
 			}
 		)
+	elif (choices["account_numbering"] == "With Numbers" and accounts.get("unnumbered")) or (
+		choices["account_numbering"] == "Without Numbers" and accounts.get("numbered")
+	):
+		blockers_numbering = {
+			"key": "chart_of_accounts.numbering",
+			"classification": BLOCKING,
+			"message": (
+				"The existing Chart of Accounts uses a different numbering mode. "
+				"Bootstrap will not renumber an established chart."
+			),
+		}
 
 	fiscal_year_exists = any(
 		str(year.get("year_start_date")) == choices["fiscal_year_start"] and not year.get("disabled")
@@ -362,6 +374,8 @@ def build_proposal(choices: dict[str, Any], report: dict[str, Any]) -> dict[str,
 	blockers = [
 		finding for finding in report.get("findings", []) if finding.get("classification") == BLOCKING
 	]
+	if accounts.get("total") and blockers_numbering:
+		blockers.append(blockers_numbering)
 	if choices["company_strategy"] in {"require_existing", "reuse_company"} and not company:
 		blockers.append(
 			{
@@ -381,6 +395,14 @@ def build_proposal(choices: dict[str, Any], report: dict[str, Any]) -> dict[str,
 				"message": "require_existing cannot continue until ERPNext setup is complete.",
 			}
 		)
+	if choices["company_strategy"] == "require_existing" and mutations:
+		blockers.append(
+			{
+				"key": "company_strategy",
+				"classification": BLOCKING,
+				"message": "require_existing refuses setup mutations; align the site first.",
+			}
+		)
 	if choices["company_strategy"] == "isolated_company" and company:
 		blockers.append(
 			{
@@ -389,6 +411,39 @@ def build_proposal(choices: dict[str, Any], report: dict[str, Any]) -> dict[str,
 				"message": "isolated_company requires a new, unused company name.",
 			}
 		)
+	existing_data = int((report.get("existing_business_data") or {}).get("total") or 0)
+	if choices["company_strategy"] == "reuse_company" and company and existing_data:
+		if defaults.get("company") and defaults.get("company") != choices["company_name"]:
+			blockers.append(
+				{
+					"key": "company_strategy",
+					"classification": BLOCKING,
+					"message": (
+						"Refusing ambiguous reuse because the selected company is not the "
+						"site default and business data already exists."
+					),
+				}
+			)
+		if bool(company.get("enable_perpetual_inventory")) != choices["perpetual_inventory"]:
+			blockers.append(
+				{
+					"key": "company.perpetual_inventory",
+					"classification": BLOCKING,
+					"message": (
+						"Perpetual inventory cannot be changed while the reused company "
+						"has existing business data."
+					),
+				}
+			)
+		stock = report.get("stock") or {}
+		if stock.get("valuation_method") not in (None, choices["valuation_method"]):
+			blockers.append(
+				{
+					"key": "stock.valuation_method",
+					"classification": BLOCKING,
+					"message": ("Stock valuation cannot be changed while existing business data is present."),
+				}
+			)
 	return {
 		"choices": choices,
 		"mutations": mutations,

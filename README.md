@@ -63,15 +63,17 @@ bench scenario setup
 ```
 
 Both clients save the same validated choices and show proposed ERPNext setup
-changes plus a dataset record estimate before asking for approval. For a
+changes plus a dataset record estimate before asking for approval. Approved
+plans initialize only missing ERPNext foundations through normal ERPNext
+controllers; they do not generate scenario business data. For a
 repeatable noninteractive preview and approval, pass a complete JSON object:
 
 ```bash
 bench scenario setup --choices onboarding-choices.json --yes --json
 ```
 
-At the current implementation boundary, approval is recorded for the next
-phase; it does not yet initialize ERPNext or generate business records.
+Every changed pre-existing setting and its prior value is retained in the
+onboarding bootstrap ownership manifest. Repeating setup is idempotent.
 
 ## Quick start
 

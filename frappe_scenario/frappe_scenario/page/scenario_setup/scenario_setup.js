@@ -33,7 +33,7 @@ class ScenarioSetupWizard {
 			<div class="scenario-setup-intro">
 				<h3>${__("Build a safe, realistic ERPNext scenario")}</h3>
 				<p>${__(
-					"Your choices are saved as a resumable plan. Previewing and approving this page does not initialize ERPNext or generate business data."
+					"Your choices are saved as a resumable plan. ERPNext initialization runs only after explicit confirmation and never generates scenario business data."
 				)}</p>
 				<span class="indicator-pill blue">${frappe.utils.escape_html(onboarding.status)}</span>
 				<details class="mt-3">
@@ -164,9 +164,17 @@ class ScenarioSetupWizard {
 				.text(__("Approve setup plan"))
 				.on("click", () => this.approve())
 				.appendTo(section);
-		} else if (this.model.onboarding.setup_approved) {
+		} else if (
+			this.model.onboarding.setup_approved &&
+			!this.model.onboarding.bootstrap_completed
+		) {
+			$("<button class='btn btn-primary btn-sm'>")
+				.text(__("Initialize ERPNext foundations"))
+				.on("click", () => this.initialize())
+				.appendTo(section);
+		} else if (this.model.onboarding.bootstrap_completed) {
 			$("<div class='alert alert-success'>")
-				.text(__("Setup plan approved. No setup or data generation has run yet."))
+				.text(__("ERPNext foundations are ready. No scenario business data has run yet."))
 				.appendTo(section);
 		} else if (!this.model.preview_is_saved) {
 			$("<div class='alert alert-info'>")
@@ -201,7 +209,7 @@ class ScenarioSetupWizard {
 	approve() {
 		frappe.confirm(
 			__(
-				"Approve the displayed ERPNext setup changes? Approval is recorded now; no settings or business records are changed in this batch."
+				"Approve the displayed ERPNext setup changes? You can review once more before initialization."
 			),
 			async () => {
 				const response = await frappe.call({
@@ -211,6 +219,31 @@ class ScenarioSetupWizard {
 					freeze: true,
 				});
 				this.model.onboarding = response.message.onboarding;
+				this.render();
+				this.initialize();
+			}
+		);
+	}
+
+	initialize() {
+		frappe.confirm(
+			__(
+				"Initialize the approved ERPNext foundations now? Only the displayed missing settings and records will be changed; scenario business data will not be generated."
+			),
+			async () => {
+				const response = await frappe.call({
+					method: "frappe_scenario.api.onboarding.initialize_erpnext",
+					type: "POST",
+					args: { expected_version: this.model.onboarding.state_version },
+					freeze: true,
+					freeze_message: __("Initializing ERPNext foundations…"),
+				});
+				this.model.onboarding = response.message.onboarding;
+				this.model.preflight = response.message.onboarding.last_preflight;
+				frappe.show_alert({
+					message: __("ERPNext foundations initialized"),
+					indicator: "green",
+				});
 				this.render();
 			}
 		);

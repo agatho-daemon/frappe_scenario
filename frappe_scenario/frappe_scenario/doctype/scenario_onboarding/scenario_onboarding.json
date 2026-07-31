@@ -25,6 +25,9 @@
   "setup_approved",
   "setup_approved_by",
   "setup_approved_on",
+  "bootstrap_completed",
+  "bootstrap_completed_on",
+  "bootstrap_manifest",
   "section_progress",
   "progress",
   "errors",
@@ -164,6 +167,26 @@
    "fieldname": "setup_approved_on",
    "fieldtype": "Datetime",
    "label": "Setup Approved On",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "bootstrap_completed",
+   "fieldtype": "Check",
+   "label": "ERPNext Bootstrap Completed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bootstrap_completed_on",
+   "fieldtype": "Datetime",
+   "label": "ERPNext Bootstrap Completed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bootstrap_manifest",
+   "fieldtype": "Code",
+   "label": "Bootstrap Ownership Manifest",
+   "options": "JSON",
    "read_only": 1
   },
   {

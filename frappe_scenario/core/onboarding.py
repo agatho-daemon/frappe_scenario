@@ -144,6 +144,9 @@ def editable_workflow_fields() -> set[str]:
 		"setup_approved",
 		"setup_approved_by",
 		"setup_approved_on",
+		"bootstrap_completed",
+		"bootstrap_completed_on",
+		"bootstrap_manifest",
 	}
 
 
@@ -155,6 +158,7 @@ def json_fields() -> set[str]:
 		"progress",
 		"errors",
 		"last_preflight",
+		"bootstrap_manifest",
 	}
 
 

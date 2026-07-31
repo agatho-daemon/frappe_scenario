@@ -97,6 +97,22 @@ def test_existing_company_strategies_block_when_company_is_missing(strategy):
 	assert any(item["key"] == "company_strategy" for item in proposal["blockers"])
 
 
+def test_existing_chart_is_never_renumbered_by_bootstrap():
+	report = _report()
+	report["chart_of_accounts"]["by_company"]["Example Trading Company"] = {
+		"total": 80,
+		"numbered": 0,
+		"unnumbered": 70,
+	}
+	choices = setup_wizard.default_choices(report)
+	choices["account_numbering"] = "With Numbers"
+
+	proposal = setup_wizard.build_proposal(choices, report)
+
+	assert not proposal["approvable"]
+	assert any(item["key"] == "chart_of_accounts.numbering" for item in proposal["blockers"])
+
+
 def test_saving_choices_uses_versioned_onboarding_service_and_resets_approval(monkeypatch):
 	report = _report()
 	choices = setup_wizard.default_choices(report)

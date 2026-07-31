@@ -183,6 +183,7 @@ def setup_command(
 ) -> None:
 	"""Resume guided scenario setup using the same service as Desk."""
 	with _site(context):
+		from frappe_scenario.core.bootstrap import execute_approved_bootstrap
 		from frappe_scenario.core.setup_wizard import (
 			approve_setup,
 			save_choices,
@@ -221,13 +222,17 @@ def setup_command(
 			expected_version=int(result["onboarding"]["state_version"]),
 		)
 		frappe.db.commit()
+		initialized = execute_approved_bootstrap(
+			expected_version=int(approved["onboarding"]["state_version"]),
+		)
+		frappe.db.commit()
 
 	if as_json:
-		click.echo(json.dumps(approved, indent="\t", default=str))
+		click.echo(json.dumps(initialized, indent="\t", default=str))
 	else:
 		click.echo(
 			click.style(
-				"Setup proposal approved. No ERPNext settings or business records were changed.",
+				"ERPNext foundations initialized. No scenario business records were generated.",
 				fg="green",
 				bold=True,
 			)
