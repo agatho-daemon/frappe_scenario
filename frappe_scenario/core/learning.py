@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 from urllib.parse import quote
 
 import frappe
@@ -130,7 +131,7 @@ def verify_step(
 
 
 def restart_path(run_name: str, path_key: str, *, user: str | None = None) -> dict[str, Any]:
-	"""Reset progress only; Batch 3.3 will reset learner changes and business records."""
+	"""Reset progress only; data restoration is an explicit experimentation action."""
 	run = _run(run_name)
 	user = user or frappe.session.user
 	path = get_path(path_key)
@@ -203,9 +204,7 @@ def _availability(path: dict[str, Any], run: Any, capabilities: dict[str, Any]) 
 		):
 			missing.append(configuration["event_type"])
 			missing_steps.append(f"{lesson_key}/{step['key']}")
-		elif step["verifier"] == "capability_nonempty" and not capabilities.get(
-			configuration["capability"]
-		):
+		elif step["verifier"] == "capability_nonempty" and not capabilities.get(configuration["capability"]):
 			missing.append(configuration["capability"])
 			missing_steps.append(f"{lesson_key}/{step['key']}")
 	return {
@@ -246,12 +245,21 @@ def _event_document_submitted(run: Any, configuration: dict[str, Any]) -> dict[s
 def _company_exists(run: Any, configuration: dict[str, Any]) -> dict[str, Any]:
 	if not run.company or not frappe.db.exists("Company", run.company):
 		return _failed(_("The scenario company is missing."))
-	return _passed(_("Verified scenario company {0}.").format(run.company), doctype="Company", name=run.company, route=_document_route("Company", run.company))
+	return _passed(
+		_("Verified scenario company {0}.").format(run.company),
+		doctype="Company",
+		name=run.company,
+		route=_document_route("Company", run.company),
+	)
 
 
 def _company_accounts_exist(run: Any, configuration: dict[str, Any]) -> dict[str, Any]:
 	count = frappe.db.count("Account", {"company": run.company, "disabled": 0})
-	return _passed(_("Verified {0} active company accounts.").format(count), count=count) if count else _failed(_("No active accounts were found for the company."))
+	return (
+		_passed(_("Verified {0} active company accounts.").format(count), count=count)
+		if count
+		else _failed(_("No active accounts were found for the company."))
+	)
 
 
 def _capability_nonempty(run: Any, configuration: dict[str, Any]) -> dict[str, Any]:
@@ -289,14 +297,20 @@ def _report_available(run: Any, configuration: dict[str, Any]) -> dict[str, Any]
 	report = configuration["report"]
 	if not frappe.db.exists("Report", report):
 		return _failed(_("ERPNext report {0} is unavailable.").format(report))
-	return _passed(_("Verified ERPNext report {0}.").format(report), report=report, route=f"/app/query-report/{report.replace(' ', '%20')}")
+	return _passed(
+		_("Verified ERPNext report {0}.").format(report),
+		report=report,
+		route=f"/app/query-report/{report.replace(' ', '%20')}",
+	)
 
 
 def _run_validation_passed(run: Any, configuration: dict[str, Any]) -> dict[str, Any]:
 	summary = json.loads(run.validation_summary or "{}")
 	if not summary.get("passed"):
 		return _failed(_("Validate the Scenario Run successfully before completing this step."))
-	return _passed(_("Scenario validation passed with no structural or accounting errors."), counts=summary.get("counts"))
+	return _passed(
+		_("Scenario validation passed with no structural or accounting errors."), counts=summary.get("counts")
+	)
 
 
 def _return_source_exists(run: Any, configuration: dict[str, Any]) -> dict[str, Any]:
@@ -307,7 +321,12 @@ def _return_source_exists(run: Any, configuration: dict[str, Any]) -> dict[str, 
 	source = doc.get("return_against")
 	if not source or not frappe.db.exists(event.reference_doctype, source):
 		return _failed(_("The return is not linked to an existing source document."))
-	return _passed(_("Verified return link to {0}.").format(source), doctype=event.reference_doctype, name=source, route=_document_route(event.reference_doctype, source))
+	return _passed(
+		_("Verified return link to {0}.").format(source),
+		doctype=event.reference_doctype,
+		name=source,
+		route=_document_route(event.reference_doctype, source),
+	)
 
 
 def _fiscal_year_covers_run(run: Any, configuration: dict[str, Any]) -> dict[str, Any]:
@@ -317,12 +336,25 @@ def _fiscal_year_covers_run(run: Any, configuration: dict[str, Any]) -> dict[str
 		{"year_start_date": ["<=", anchor], "year_end_date": [">=", anchor], "disabled": 0},
 		"name",
 	)
-	return _passed(_("Verified fiscal year {0} covers the scenario.").format(name), doctype="Fiscal Year", name=name, route=_document_route("Fiscal Year", name)) if name else _failed(_("No active fiscal year covers the scenario anchor date."))
+	return (
+		_passed(
+			_("Verified fiscal year {0} covers the scenario.").format(name),
+			doctype="Fiscal Year",
+			name=name,
+			route=_document_route("Fiscal Year", name),
+		)
+		if name
+		else _failed(_("No active fiscal year covers the scenario anchor date."))
+	)
 
 
 def _doctype_available(run: Any, configuration: dict[str, Any]) -> dict[str, Any]:
 	doctype = configuration["doctype"]
-	return _passed(_("Verified ERPNext DocType {0}.").format(doctype), doctype=doctype) if frappe.db.exists("DocType", doctype) else _failed(_("ERPNext DocType {0} is unavailable.").format(doctype))
+	return (
+		_passed(_("Verified ERPNext DocType {0}.").format(doctype), doctype=doctype)
+		if frappe.db.exists("DocType", doctype)
+		else _failed(_("ERPNext DocType {0} is unavailable.").format(doctype))
+	)
 
 
 def _passed(message: str, **evidence: Any) -> dict[str, Any]:

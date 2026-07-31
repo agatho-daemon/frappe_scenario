@@ -16,6 +16,7 @@ CATALOG_VERSION = "1.0"
 def _step(key: str, title: str, verifier: str, **configuration: Any) -> dict[str, Any]:
 	return {"key": key, "title": title, "verifier": verifier, "configuration": configuration}
 
+
 GLOSSARY = {
 	"Chart of Accounts": {
 		"simple": "The organized list of accounts used to classify every financial entry.",
@@ -104,10 +105,29 @@ PATHS: tuple[dict[str, Any], ...] = (
 				"title": "Meet the parties",
 				"summary": "Inspect realistic prospects and trading partners with linked contact details.",
 				"steps": [
-					_step("lead", "Open a generated lead.", "capability_nonempty", capability="erpnext.parties.leads"),
-					_step("customer", "Open a customer used by the selling lifecycle.", "capability_nonempty", capability="erpnext.parties.customers"),
-					_step("supplier", "Open a supplier used by the buying lifecycle.", "capability_nonempty", capability="erpnext.parties.suppliers"),
-					_step("contact", "Confirm that scenario-owned contacts and addresses exist.", "party_links_exist"),
+					_step(
+						"lead",
+						"Open a generated lead.",
+						"capability_nonempty",
+						capability="erpnext.parties.leads",
+					),
+					_step(
+						"customer",
+						"Open a customer used by the selling lifecycle.",
+						"capability_nonempty",
+						capability="erpnext.parties.customers",
+					),
+					_step(
+						"supplier",
+						"Open a supplier used by the buying lifecycle.",
+						"capability_nonempty",
+						capability="erpnext.parties.suppliers",
+					),
+					_step(
+						"contact",
+						"Confirm that scenario-owned contacts and addresses exist.",
+						"party_links_exist",
+					),
 				],
 			}
 		],
@@ -123,10 +143,32 @@ PATHS: tuple[dict[str, Any], ...] = (
 				"title": "Purchase to payment",
 				"summary": "Trace one normal ERPNext buying lifecycle using linked submitted documents.",
 				"steps": [
-					_step("order", "Inspect the Purchase Order commitment.", "event_document_submitted", event_type="Purchase Order"),
-					_step("receipt", "Follow it to the linked Purchase Receipt.", "event_document_submitted", event_type="Purchase Receipt", glossary="Stock Ledger"),
-					_step("invoice", "Inspect the supplier's Purchase Invoice.", "event_document_submitted", event_type="Purchase Invoice", glossary="Payable"),
-					_step("payment", "Verify a supplier Payment Entry against its invoice.", "event_document_submitted", event_type="Supplier Payment"),
+					_step(
+						"order",
+						"Inspect the Purchase Order commitment.",
+						"event_document_submitted",
+						event_type="Purchase Order",
+					),
+					_step(
+						"receipt",
+						"Follow it to the linked Purchase Receipt.",
+						"event_document_submitted",
+						event_type="Purchase Receipt",
+						glossary="Stock Ledger",
+					),
+					_step(
+						"invoice",
+						"Inspect the supplier's Purchase Invoice.",
+						"event_document_submitted",
+						event_type="Purchase Invoice",
+						glossary="Payable",
+					),
+					_step(
+						"payment",
+						"Verify a supplier Payment Entry against its invoice.",
+						"event_document_submitted",
+						event_type="Supplier Payment",
+					),
 				],
 			}
 		],
@@ -142,10 +184,32 @@ PATHS: tuple[dict[str, Any], ...] = (
 				"title": "Order to cash",
 				"summary": "Trace one linked ERPNext selling lifecycle and its operational and ledger effects.",
 				"steps": [
-					_step("order", "Inspect the customer's Sales Order.", "event_document_submitted", event_type="Sales Order"),
-					_step("delivery", "Follow fulfillment to a Delivery Note.", "event_document_submitted", event_type="Delivery Note", glossary="Stock Ledger"),
-					_step("invoice", "Inspect the linked Sales Invoice and receivable.", "event_document_submitted", event_type="Sales Invoice", glossary="Receivable"),
-					_step("payment", "Verify a customer Payment Entry reduced an invoice balance.", "event_document_submitted", event_type="Customer Payment"),
+					_step(
+						"order",
+						"Inspect the customer's Sales Order.",
+						"event_document_submitted",
+						event_type="Sales Order",
+					),
+					_step(
+						"delivery",
+						"Follow fulfillment to a Delivery Note.",
+						"event_document_submitted",
+						event_type="Delivery Note",
+						glossary="Stock Ledger",
+					),
+					_step(
+						"invoice",
+						"Inspect the linked Sales Invoice and receivable.",
+						"event_document_submitted",
+						event_type="Sales Invoice",
+						glossary="Receivable",
+					),
+					_step(
+						"payment",
+						"Verify a customer Payment Entry reduced an invoice balance.",
+						"event_document_submitted",
+						event_type="Customer Payment",
+					),
 				],
 			}
 		],
@@ -161,9 +225,25 @@ PATHS: tuple[dict[str, Any], ...] = (
 				"title": "Why stock changes",
 				"summary": "Compare incoming and outgoing stock movements and inspect Stock Balance.",
 				"steps": [
-					_step("incoming", "Inspect a submitted Purchase Receipt.", "event_document_submitted", event_type="Purchase Receipt"),
-					_step("outgoing", "Inspect a submitted Delivery Note.", "event_document_submitted", event_type="Delivery Note"),
-					_step("balance", "Open the Stock Balance report.", "report_available", report="Stock Balance", glossary="Stock Ledger"),
+					_step(
+						"incoming",
+						"Inspect a submitted Purchase Receipt.",
+						"event_document_submitted",
+						event_type="Purchase Receipt",
+					),
+					_step(
+						"outgoing",
+						"Inspect a submitted Delivery Note.",
+						"event_document_submitted",
+						event_type="Delivery Note",
+					),
+					_step(
+						"balance",
+						"Open the Stock Balance report.",
+						"report_available",
+						report="Stock Balance",
+						glossary="Stock Ledger",
+					),
 				],
 			}
 		],
@@ -179,10 +259,32 @@ PATHS: tuple[dict[str, Any], ...] = (
 				"title": "Read the books",
 				"summary": "Verify that generated business activity produced coherent accounting evidence.",
 				"steps": [
-					_step("receivable", "Inspect Accounts Receivable.", "report_available", report="Accounts Receivable", glossary="Receivable"),
-					_step("payable", "Inspect Accounts Payable.", "report_available", report="Accounts Payable", glossary="Payable"),
-					_step("ledger", "Open the General Ledger.", "report_available", report="General Ledger", glossary="General Ledger"),
-					_step("validated", "Confirm that the scenario books pass validation.", "run_validation_passed"),
+					_step(
+						"receivable",
+						"Inspect Accounts Receivable.",
+						"report_available",
+						report="Accounts Receivable",
+						glossary="Receivable",
+					),
+					_step(
+						"payable",
+						"Inspect Accounts Payable.",
+						"report_available",
+						report="Accounts Payable",
+						glossary="Payable",
+					),
+					_step(
+						"ledger",
+						"Open the General Ledger.",
+						"report_available",
+						report="General Ledger",
+						glossary="General Ledger",
+					),
+					_step(
+						"validated",
+						"Confirm that the scenario books pass validation.",
+						"run_validation_passed",
+					),
 				],
 			}
 		],
@@ -198,8 +300,18 @@ PATHS: tuple[dict[str, Any], ...] = (
 				"title": "Reverse a sale correctly",
 				"summary": "Inspect a generated return or credit note and its original document.",
 				"steps": [
-					_step("return", "Open a submitted return or credit note.", "event_document_submitted", event_type="Return / Credit Note", glossary="Return Against"),
-					_step("source", "Verify that the return links to its original submitted document.", "return_source_exists"),
+					_step(
+						"return",
+						"Open a submitted return or credit note.",
+						"event_document_submitted",
+						event_type="Return / Credit Note",
+						glossary="Return Against",
+					),
+					_step(
+						"source",
+						"Verify that the return links to its original submitted document.",
+						"return_source_exists",
+					),
 				],
 			}
 		],
@@ -215,8 +327,15 @@ PATHS: tuple[dict[str, Any], ...] = (
 				"title": "Move from documents to reports",
 				"summary": "Open the reports used to understand sales, balances, and stock.",
 				"steps": [
-					_step("receivables", "Open Accounts Receivable.", "report_available", report="Accounts Receivable"),
-					_step("payables", "Open Accounts Payable.", "report_available", report="Accounts Payable"),
+					_step(
+						"receivables",
+						"Open Accounts Receivable.",
+						"report_available",
+						report="Accounts Receivable",
+					),
+					_step(
+						"payables", "Open Accounts Payable.", "report_available", report="Accounts Payable"
+					),
 					_step("stock", "Open Stock Balance.", "report_available", report="Stock Balance"),
 					_step("trial", "Open Trial Balance.", "report_available", report="Trial Balance"),
 				],
@@ -234,10 +353,30 @@ PATHS: tuple[dict[str, Any], ...] = (
 				"title": "Review before closing",
 				"summary": "Confirm fiscal-year configuration, accruals, and the reports used before period closing.",
 				"steps": [
-					_step("fiscal", "Confirm a fiscal year covers the scenario dates.", "fiscal_year_covers_run", glossary="Fiscal Year"),
-					_step("accrual", "Inspect a period-end operating accrual.", "event_document_submitted", event_type="Operating Accrual"),
-					_step("trial", "Review Trial Balance before closing.", "report_available", report="Trial Balance"),
-					_step("doctype", "Confirm ERPNext's Period Closing Voucher is available.", "doctype_available", doctype="Period Closing Voucher"),
+					_step(
+						"fiscal",
+						"Confirm a fiscal year covers the scenario dates.",
+						"fiscal_year_covers_run",
+						glossary="Fiscal Year",
+					),
+					_step(
+						"accrual",
+						"Inspect a period-end operating accrual.",
+						"event_document_submitted",
+						event_type="Operating Accrual",
+					),
+					_step(
+						"trial",
+						"Review Trial Balance before closing.",
+						"report_available",
+						report="Trial Balance",
+					),
+					_step(
+						"doctype",
+						"Confirm ERPNext's Period Closing Voucher is available.",
+						"doctype_available",
+						doctype="Period Closing Voucher",
+					),
 				],
 			}
 		],

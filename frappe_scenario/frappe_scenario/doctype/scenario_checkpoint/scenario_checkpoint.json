@@ -1,0 +1,113 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-07-31 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "scenario_run",
+  "checkpoint_label",
+  "checkpoint_type",
+  "column_break_identity",
+  "user",
+  "captured_at",
+  "record_count",
+  "snapshot_hash",
+  "section_snapshot",
+  "snapshot_json"
+ ],
+ "fields": [
+  {
+   "fieldname": "scenario_run",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scenario Run",
+   "options": "Scenario Run",
+   "reqd": 1
+  },
+  {
+   "fieldname": "checkpoint_label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Checkpoint Label",
+   "reqd": 1
+  },
+  {
+   "fieldname": "checkpoint_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Checkpoint Type",
+   "options": "Baseline\nNamed",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_identity",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "Captured By",
+   "options": "User",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "captured_at",
+   "fieldtype": "Datetime",
+   "label": "Captured At",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "record_count",
+   "fieldtype": "Int",
+   "label": "Record Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "snapshot_hash",
+   "fieldtype": "Data",
+   "label": "Snapshot Hash",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_snapshot",
+   "fieldtype": "Section Break",
+   "label": "Private Snapshot"
+  },
+  {
+   "fieldname": "snapshot_json",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Snapshot JSON",
+   "read_only": 1,
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Scenario",
+ "name": "Scenario Checkpoint",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "search_fields": "scenario_run,checkpoint_label,checkpoint_type,user",
+ "sort_field": "captured_at",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "checkpoint_label"
+}

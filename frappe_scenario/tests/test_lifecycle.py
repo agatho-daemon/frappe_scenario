@@ -22,6 +22,12 @@ from frappe_scenario.core.engine import (
 	plan,
 	validate_run,
 )
+from frappe_scenario.core.experimentation import (
+	create_checkpoint,
+	describe_changes,
+	reset_module,
+	restore_scenario,
+)
 from frappe_scenario.core.learning import learning_home, verify_step
 from frappe_scenario.core.narrative import explain_record
 
@@ -98,6 +104,8 @@ def test_a_plan_warns_about_what_cleanup_will_not_restore(erpnext_site, smoke_sp
 
 
 def test_a_generated_scenario_records_everything_it_created(generated):
+	import frappe
+
 	manifest = load_manifest(generated["run_id"])
 
 	# The reported count is of created records. The manifest also carries the
@@ -106,6 +114,15 @@ def test_a_generated_scenario_records_everything_it_created(generated):
 	assert len(manifest) > len(manifest.created())
 	assert generated["canonical_hash"]
 	assert generated["structural_hash"]
+	baseline = frappe.get_doc(
+		"Scenario Checkpoint",
+		frappe.db.get_value(
+			"Scenario Checkpoint",
+			{"scenario_run": generated["run_id"], "checkpoint_type": "Baseline"},
+			"name",
+		),
+	)
+	assert baseline.record_count == len(manifest.created())
 
 
 def test_every_manifest_record_actually_exists(generated):
@@ -221,6 +238,54 @@ def test_novice_can_complete_core_paths_against_real_erpnext_records(generated, 
 	assert progress.user == frappe.session.user
 	assert result["progress"]["completed"] == result["progress"]["total"] - len(missing_steps)
 	assert progress.status == ("Completed" if not missing_steps else "In Progress")
+
+
+def test_learner_changes_are_visible_and_manifest_scoped_resets_restore_them(generated):
+	import frappe
+
+	manifest = load_manifest(generated["run_id"])
+	lead = next(
+		record for record in manifest.for_capability("erpnext.parties.leads") if record.operation == "created"
+	)
+	original = frappe.db.get_value(lead.doctype, lead.name, "first_name")
+	frappe.db.set_value(lead.doctype, lead.name, "first_name", "Learner Experiment")
+
+	changes = describe_changes(generated["run_id"])
+	change = next(item for item in changes["changes"] if item["reference"] == lead.reference)
+	assert change["status"] == "Changed"
+	assert "first_name" in change["fields"]
+
+	result = reset_module(generated["run_id"], "crm-parties")
+	assert not result["blockers"]
+	assert frappe.db.get_value(lead.doctype, lead.name, "first_name") == original
+
+	learner_record = frappe.get_doc(
+		{"doctype": "ToDo", "description": "Learner-owned note outside the scenario manifest"}
+	).insert(ignore_permissions=True)
+	try:
+		assert not restore_scenario(generated["run_id"])["blockers"]
+		assert frappe.db.exists("ToDo", learner_record.name)
+	finally:
+		frappe.delete_doc("ToDo", learner_record.name, ignore_permissions=True, delete_permanently=True)
+
+
+def test_named_checkpoint_can_restore_a_later_owned_state(generated):
+	import frappe
+
+	manifest = load_manifest(generated["run_id"])
+	lead = next(
+		record for record in manifest.for_capability("erpnext.parties.leads") if record.operation == "created"
+	)
+	frappe.db.set_value(lead.doctype, lead.name, "first_name", "Checkpoint Name")
+	checkpoint = create_checkpoint(generated["run_id"], "Before contact exercise")
+	frappe.db.set_value(lead.doctype, lead.name, "first_name", "Changed Again")
+
+	result = restore_scenario(generated["run_id"], checkpoint_name=checkpoint["name"])
+
+	assert not result["blockers"]
+	assert frappe.db.get_value(lead.doctype, lead.name, "first_name") == "Checkpoint Name"
+	baseline = restore_scenario(generated["run_id"])
+	assert not baseline["blockers"]
 
 
 def test_validation_findings_carry_enough_to_act_on(generated):

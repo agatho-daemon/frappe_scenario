@@ -406,6 +406,9 @@ def execute_run(
 
 	events = build_scenario_events(run, context.published_capabilities)
 	run.db_set("status", STATUS_COMPLETED, update_modified=False)
+	from frappe_scenario.core.experimentation import ensure_baseline
+
+	ensure_baseline(run.name)
 	frappe.db.commit()
 
 	return {

@@ -57,8 +57,5 @@ def test_buying_and_selling_are_complete_multi_document_paths():
 		"buying": {"Purchase Order", "Purchase Receipt", "Purchase Invoice", "Supplier Payment"},
 		"selling": {"Sales Order", "Delivery Note", "Sales Invoice", "Customer Payment"},
 	}.items():
-		events = {
-			step["configuration"].get("event_type")
-			for _, step in flatten_steps(by_key[path_key])
-		}
+		events = {step["configuration"].get("event_type") for _, step in flatten_steps(by_key[path_key])}
 		assert events == expected
