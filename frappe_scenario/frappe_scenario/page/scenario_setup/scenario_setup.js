@@ -95,7 +95,6 @@ class ScenarioSetupWizard {
 		this.render_section(__("Dataset"), [
 			this.select("scale", __("Scale"), ["smoke", "small", "medium", "large", "custom"]),
 			this.data("history_months", __("History in months"), null, "Int"),
-			this.select("complexity", __("Complexity"), this.model.catalog.depths),
 		]);
 		this.render_proposal(this.model.proposal);
 	}

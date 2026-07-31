@@ -69,6 +69,18 @@ def test_defaults_cover_every_required_guided_choice():
 	assert choices["intent"] == "Quick Demo"
 	assert choices["company_strategy"] == "initialize_if_needed"
 	assert choices["history_months"] == 2
+	assert "complexity" not in choices
+
+
+def test_legacy_complexity_choice_migrates_to_operational_depth():
+	choices = setup_wizard.default_choices(_report())
+	choices.pop("depth")
+	choices["complexity"] = "Complex Operations"
+
+	resolved = setup_wizard.validate_choices(choices)
+
+	assert resolved["depth"] == "Complex Operations"
+	assert "complexity" not in resolved
 
 
 def test_preview_reports_mutations_estimate_and_never_executes():
@@ -83,6 +95,7 @@ def test_preview_reports_mutations_estimate_and_never_executes():
 	assert proposal["record_estimate"]["minimum"] < proposal["record_estimate"]["maximum"]
 	assert proposal["executes_setup"] is False
 	assert proposal["generates_data"] is False
+	assert proposal["record_estimate"]["lifecycle"]["sales_orders"] > 0
 
 
 @pytest.mark.parametrize("strategy", ["require_existing", "reuse_company"])

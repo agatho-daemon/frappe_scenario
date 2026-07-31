@@ -19,6 +19,7 @@ from typing import Any
 import frappe
 
 from frappe_scenario.core.context import ScenarioContext
+from frappe_scenario.core.lifecycle import derive_lifecycle_counts
 from frappe_scenario.core.provider import (
 	CapabilityDeclaration,
 	ProviderResult,
@@ -117,6 +118,18 @@ class ErpnextBuyingProvider(ScenarioProvider):
 			float((operations.get("seasonality") or {}).get("peak_multiplier") or 1.0),
 		)
 		total = sum(counts)
+		options = self.options(context)
+		lifecycle = derive_lifecycle_counts(
+			sales_activities=0,
+			purchase_orders=total,
+			depth=context.specification["scenario"]["depth"],
+			overrides={
+				"buying": {
+					"receipt_ratio": float(options.get("receipt_ratio", 0.9)),
+					"invoice_ratio": float(options.get("invoice_ratio", 0.9)),
+				}
+			},
+		)
 
 		plan = ScenarioPlan(provider=self.id)
 		plan.step(
@@ -129,9 +142,14 @@ class ErpnextBuyingProvider(ScenarioProvider):
 			RECEIPTS,
 			"Receive ordered goods after the supplier lead time.",
 			doctype="Purchase Receipt",
-			count=total,
+			count=lifecycle["purchase_receipts"],
 		)
-		plan.step(INVOICES, "Invoice received goods.", doctype="Purchase Invoice", count=total)
+		plan.step(
+			INVOICES,
+			"Invoice the lifecycle-derived share of receipts.",
+			doctype="Purchase Invoice",
+			count=lifecycle["purchase_invoices"],
+		)
 		plan.assumptions.append(f"Order rates vary within {COST_VARIANCE:.0%} of the recorded item cost.")
 		plan.cleanup_notes.append(
 			"Cleanup cancels invoices, then receipts, then orders, before deleting them."

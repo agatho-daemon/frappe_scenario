@@ -216,6 +216,7 @@ def resolve_specification(spec: dict[str, Any]) -> tuple[dict[str, Any], list[di
 		)
 
 	from frappe_scenario.archetypes import get_archetype
+	from frappe_scenario.core.lifecycle import depth_specification_defaults
 	from frappe_scenario.locales import get_country_pack
 
 	resolved = deepcopy(spec)
@@ -227,6 +228,12 @@ def resolve_specification(spec: dict[str, Any]) -> tuple[dict[str, Any], list[di
 	scenario = resolved.setdefault("scenario", {})
 
 	archetype = get_archetype(scenario["archetype"])
+	if not scenario.get("intent"):
+		scenario["intent"] = "Quick Demo"
+		assume("/scenario/intent", scenario["intent"], "No product intent supplied.")
+	if not scenario.get("depth"):
+		scenario["depth"] = "Everyday Business"
+		assume("/scenario/depth", scenario["depth"], "No operational depth supplied.")
 	scale_name = scenario.get("scale") or DEFAULT_SCALE
 	if not scenario.get("scale"):
 		scenario["scale"] = scale_name
@@ -269,7 +276,11 @@ def resolve_specification(spec: dict[str, Any]) -> tuple[dict[str, Any], list[di
 	# Layered defaults: scale profile first, then archetype, then country pack.
 	before = deepcopy(resolved)
 	for defaults, reason in (
-		({k: v for k, v in scale_profile.items() if k != "description"}, f"scale profile {scale_name}"),
+		(
+			{k: v for k, v in scale_profile.items() if k not in {"description", "record_target"}},
+			f"scale profile {scale_name}",
+		),
+		(depth_specification_defaults(scenario["depth"]), f"operational depth {scenario['depth']}"),
 		(archetype.defaults(scale_name), f"archetype {archetype.id}"),
 		(country_pack.specification_defaults(), f"country pack {country_pack.id}"),
 	):

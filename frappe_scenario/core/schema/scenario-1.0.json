@@ -55,6 +55,19 @@
 					"type": "string",
 					"pattern": "^[a-z][a-z0-9_]*$"
 				},
+				"intent": {
+					"enum": [
+						"Learn ERPNext",
+						"Quick Demo",
+						"Presentation Demo",
+						"Realistic Business",
+						"Custom/AI Brief",
+						"Developer/Test Dataset"
+					]
+				},
+				"depth": {
+					"enum": ["Essentials", "Everyday Business", "Complex Operations"]
+				},
 				"country": {
 					"type": "string",
 					"minLength": 2,

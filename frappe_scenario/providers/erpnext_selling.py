@@ -20,6 +20,7 @@ from typing import Any
 import frappe
 
 from frappe_scenario.core.context import ScenarioContext
+from frappe_scenario.core.lifecycle import derive_lifecycle_counts
 from frappe_scenario.core.provider import (
 	CapabilityDeclaration,
 	ProviderResult,
@@ -123,16 +124,39 @@ class ErpnextSellingProvider(ScenarioProvider):
 			float(seasonality.get("peak_multiplier") or 1.0),
 		)
 		total = sum(counts)
+		options = self.options(context)
+		lifecycle = derive_lifecycle_counts(
+			sales_activities=total,
+			purchase_orders=0,
+			depth=context.specification["scenario"]["depth"],
+			cash_sales_ratio=float(context.section("parties").get("cash_sales_ratio") or 0),
+			overrides={
+				"selling": {
+					"delivery_ratio": float(options.get("delivery_ratio", 0.9)),
+					"invoice_ratio": float(options.get("invoice_ratio", 0.92)),
+				}
+			},
+		)
 
 		plan = ScenarioPlan(provider=self.id)
 		plan.step(
 			ORDERS,
-			f"Create {total} sales transactions across {len(months)} months.",
+			f"Create {lifecycle['sales_orders']} credit sales orders across {len(months)} months.",
 			doctype="Sales Order",
-			count=total,
+			count=lifecycle["sales_orders"],
 		)
-		plan.step(DELIVERIES, "Deliver ordered goods.", doctype="Delivery Note", count=total)
-		plan.step(INVOICES, "Invoice deliveries and counter sales.", doctype="Sales Invoice", count=total)
+		plan.step(
+			DELIVERIES,
+			"Deliver the lifecycle-derived share of ordered goods.",
+			doctype="Delivery Note",
+			count=lifecycle["delivery_notes"],
+		)
+		plan.step(
+			INVOICES,
+			"Invoice the lifecycle-derived share of deliveries and counter sales.",
+			doctype="Sales Invoice",
+			count=lifecycle["sales_invoices"],
+		)
 
 		for unsupported in ("returns", "warranty_claims"):
 			if float(operations.get(unsupported) or 0) > 0:

@@ -75,6 +75,13 @@ bench scenario setup --choices onboarding-choices.json --yes --json
 Every changed pre-existing setting and its prior value is retained in the
 onboarding bootstrap ownership manifest. Repeating setup is idempotent.
 
+Purpose, dataset size, and operational depth are independent. Purpose records
+whether the scenario is for learning, presentation, realistic business, AI
+compilation, or testing. Scale controls the target record range and history.
+Depth controls lifecycle coverage—how many orders progress to fulfillment,
+invoicing, and payment. Existing `scenario-1.0` specifications remain valid;
+missing purpose and depth default to `Quick Demo` and `Everyday Business`.
+
 ## Quick start
 
 Scenario commands use the Bench default site configured by `bench use`.

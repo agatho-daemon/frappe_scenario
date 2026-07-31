@@ -14,7 +14,8 @@ from frappe_scenario.core.errors import SpecificationError
 
 SCALE_PROFILES: dict[str, dict[str, Any]] = {
 	"smoke": {
-		"description": "One company and one example of each critical lifecycle. Under 200 records.",
+		"description": "One company and critical lifecycle examples, targeting roughly 100-250 records.",
+		"record_target": {"minimum": 100, "typical": 150, "maximum": 250},
 		"history_months": 2,
 		"parties": {"customers": 6, "suppliers": 4, "leads": 4},
 		"catalog": {"item_count": 12},
@@ -23,6 +24,7 @@ SCALE_PROFILES: dict[str, dict[str, Any]] = {
 	},
 	"small": {
 		"description": "About 10 customers, 8 suppliers, 30 items and 3 months of history.",
+		"record_target": {"minimum": 300, "typical": 600, "maximum": 1000},
 		"history_months": 3,
 		"parties": {"customers": 10, "suppliers": 8, "leads": 8},
 		"catalog": {"item_count": 30},
@@ -31,6 +33,7 @@ SCALE_PROFILES: dict[str, dict[str, Any]] = {
 	},
 	"medium": {
 		"description": "About 75 customers, 30 suppliers, 250 items and 2 years of history.",
+		"record_target": {"minimum": 2500, "typical": 4000, "maximum": 7000},
 		"history_months": 24,
 		"parties": {"customers": 75, "suppliers": 30, "leads": 40},
 		"catalog": {"item_count": 250},
@@ -39,6 +42,7 @@ SCALE_PROFILES: dict[str, dict[str, Any]] = {
 	},
 	"large": {
 		"description": "About 500 customers, 150 suppliers, 2000 items and 5 years of history.",
+		"record_target": {"minimum": 15000, "typical": 25000, "maximum": 40000},
 		"history_months": 60,
 		"parties": {"customers": 500, "suppliers": 150, "leads": 200},
 		"catalog": {"item_count": 2000},
@@ -47,6 +51,7 @@ SCALE_PROFILES: dict[str, dict[str, Any]] = {
 	},
 	"custom": {
 		"description": "Explicit counts and dates supplied by the specification.",
+		"record_target": {"minimum": 1, "typical": 600, "maximum": 100000},
 		"history_months": 3,
 		"parties": {"customers": 10, "suppliers": 8, "leads": 8},
 		"catalog": {"item_count": 30},
@@ -82,6 +87,7 @@ def describe_scale_profiles() -> list[dict[str, Any]]:
 			"id": name,
 			"description": profile["description"],
 			"history_months": profile["history_months"],
+			"record_target": dict(profile["record_target"]),
 			"customers": profile["parties"]["customers"],
 			"suppliers": profile["parties"]["suppliers"],
 			"items": profile["catalog"]["item_count"],

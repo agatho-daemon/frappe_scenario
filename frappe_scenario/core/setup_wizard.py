@@ -15,20 +15,18 @@ from frappe import _
 from frappe.utils import now_datetime
 
 from frappe_scenario.archetypes import describe_archetypes
+from frappe_scenario.core.lifecycle import (
+	OPERATIONAL_DEPTHS,
+	PRODUCT_INTENTS,
+	derive_lifecycle_counts,
+)
 from frappe_scenario.core.onboarding import DOCTYPE, json_fields, transition_onboarding
 from frappe_scenario.core.preflight import BLOCKING, preflight_report
 from frappe_scenario.core.scale import get_scale_profile
 from frappe_scenario.locales import describe_country_packs
 
-INTENTS = (
-	"Learn ERPNext",
-	"Quick Demo",
-	"Presentation Demo",
-	"Realistic Business",
-	"Custom/AI Brief",
-	"Developer/Test Dataset",
-)
-DEPTHS = ("Essentials", "Everyday Business", "Complex Operations")
+INTENTS = PRODUCT_INTENTS
+DEPTHS = OPERATIONAL_DEPTHS
 COMPANY_STRATEGIES = (
 	"initialize_if_needed",
 	"require_existing",
@@ -104,7 +102,6 @@ def default_choices(report: dict[str, Any]) -> dict[str, Any]:
 		"cost_center_name": "Main",
 		"scale": "smoke",
 		"history_months": get_scale_profile("smoke")["history_months"],
-		"complexity": "Everyday Business",
 	}
 
 
@@ -178,10 +175,12 @@ def validate_choices(choices: dict[str, Any]) -> dict[str, Any]:
 	if not isinstance(choices, dict):
 		frappe.throw(_("Onboarding choices must be a JSON object."), frappe.ValidationError)
 	resolved = deepcopy(choices)
+	if not resolved.get("depth") and resolved.get("complexity"):
+		resolved["depth"] = resolved["complexity"]
+	resolved.pop("complexity", None)
 	_required(resolved)
 	_choice(resolved, "intent", INTENTS)
 	_choice(resolved, "depth", DEPTHS)
-	_choice(resolved, "complexity", DEPTHS)
 	_choice(resolved, "company_strategy", COMPANY_STRATEGIES)
 	_choice(resolved, "account_numbering", ACCOUNT_NUMBERING)
 	_choice(resolved, "valuation_method", VALUATION_METHODS)
@@ -464,22 +463,44 @@ def estimate_records(choices: dict[str, Any]) -> dict[str, Any]:
 	items = profile["catalog"]["item_count"]
 	sales = profile["operations"]["sales_orders_per_month"] * months
 	purchases = profile["operations"]["purchase_orders_per_month"] * months
-	depth_factor = {"Essentials": 3, "Everyday Business": 5, "Complex Operations": 7}[choices["complexity"]]
+	lifecycle = derive_lifecycle_counts(
+		sales_activities=sales,
+		purchase_orders=purchases,
+		depth=choices["depth"],
+		cash_sales_ratio=0.15,
+	)
 	breakdown = {
 		"foundations": 80,
 		"parties_contacts_addresses": sum(parties.values()) * 3,
 		"catalog": items * 2,
-		"selling_lifecycle": sales * depth_factor,
-		"buying_lifecycle": purchases * depth_factor,
-		"accounting_and_stock": (sales + purchases) * 2,
+		"selling_lifecycle": sum(
+			lifecycle[key]
+			for key in ("sales_orders", "delivery_notes", "sales_invoices", "customer_payments")
+		),
+		"buying_lifecycle": sum(
+			lifecycle[key]
+			for key in (
+				"purchase_orders",
+				"purchase_receipts",
+				"purchase_invoices",
+				"supplier_payments",
+			)
+		),
+		"accounting_and_stock": lifecycle["delivery_notes"]
+		+ lifecycle["purchase_receipts"]
+		+ lifecycle["customer_payments"]
+		+ lifecycle["supplier_payments"],
 	}
 	approximate = sum(breakdown.values())
+	target = profile["record_target"]
 	return {
 		"approximate": approximate,
-		"minimum": max(int(approximate * 0.8), 1),
-		"maximum": int(approximate * 1.2),
+		"minimum": target["minimum"],
+		"maximum": target["maximum"],
+		"target": target["typical"],
 		"history_months": months,
 		"breakdown": breakdown,
+		"lifecycle": lifecycle,
 	}
 
 
@@ -534,7 +555,6 @@ def _required(choices: dict[str, Any]) -> None:
 		"cost_center_name",
 		"scale",
 		"history_months",
-		"complexity",
 	}
 	missing = sorted(key for key in required if choices.get(key) in (None, ""))
 	if missing:

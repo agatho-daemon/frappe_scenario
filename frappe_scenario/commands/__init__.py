@@ -119,8 +119,12 @@ def describe(context: Any, as_json: bool) -> None:
 	for pack in payload["country_packs"]:
 		click.echo(f"  {pack['id']}: {pack['country']} / {pack['currency']}")
 	click.echo(click.style("Scales", bold=True))
-	for name, profile in payload["scales"].items():
-		click.echo(f"  {name}: {profile}")
+	for profile in payload["scales"]:
+		target = profile["record_target"]
+		click.echo(
+			f"  {profile['id']}: {profile['description']} "
+			f"(target {target['minimum']}-{target['maximum']} records)"
+		)
 
 
 # -- readiness -----------------------------------------------------------------
@@ -582,11 +586,6 @@ def _prompt_setup_choices(model: dict[str, Any]) -> dict[str, Any]:
 			"Dataset scale",
 			type=click.Choice(["smoke", "small", "medium", "large", "custom"]),
 			default=default_scale,
-		),
-		"complexity": click.prompt(
-			"Dataset complexity",
-			type=click.Choice(catalog["depths"]),
-			default=defaults["complexity"],
 		),
 	}
 	scale_defaults = {

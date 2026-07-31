@@ -76,6 +76,37 @@ def test_resolution_never_overwrites_an_explicit_choice():
 	assert resolved["scenario"]["currency"] == "USD"
 
 
+def test_intent_scale_and_depth_are_independent_choices():
+	spec = copy.deepcopy(MINIMAL)
+	spec["scenario"].update(
+		{
+			"intent": "Learn ERPNext",
+			"scale": "large",
+			"depth": "Essentials",
+			"history_months": 12,
+		}
+	)
+
+	resolved, _ = resolve_specification(spec)
+
+	assert resolved["scenario"]["intent"] == "Learn ERPNext"
+	assert resolved["scenario"]["scale"] == "large"
+	assert resolved["scenario"]["depth"] == "Essentials"
+	assert resolved["scenario"]["history_months"] == 12
+	assert resolved["providers"]["erpnext.selling"]["delivery_ratio"] == 0.8
+
+
+def test_explicit_lifecycle_ratio_wins_over_depth_default():
+	spec = copy.deepcopy(MINIMAL)
+	spec["scenario"]["depth"] = "Essentials"
+	spec["providers"] = {"erpnext.selling": {"delivery_ratio": 0.5}}
+
+	resolved, _ = resolve_specification(spec)
+
+	assert resolved["providers"]["erpnext.selling"]["delivery_ratio"] == 0.5
+	assert resolved["providers"]["erpnext.selling"]["invoice_ratio"] == 0.85
+
+
 def test_resolution_is_idempotent():
 	once, _ = resolve_specification(copy.deepcopy(MINIMAL))
 	twice, _ = resolve_specification(copy.deepcopy(once))
