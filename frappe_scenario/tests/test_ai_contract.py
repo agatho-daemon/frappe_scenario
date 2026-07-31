@@ -11,6 +11,7 @@ import pytest
 
 from frappe_scenario.ai.base import AICapability
 from frappe_scenario.ai.configuration import parse_public_configuration
+from frappe_scenario.ai.executor import AIExecutionError, AIHTTPResult, execute_request
 from frappe_scenario.ai.openai import DEFAULT_ENDPOINT, OpenAIAdapter
 
 pytestmark = pytest.mark.pure
@@ -68,3 +69,37 @@ def test_external_agent_api_signatures_remain_available():
 	assert list(inspect.signature(compile_brief).parameters) == ["brief", "constraints"]
 	assert "compiled_specification" in inspect.signature(submit_draft).parameters
 	assert "ai_provider" in inspect.signature(submit_draft).parameters
+
+
+def test_executor_adds_authorization_only_at_the_transport_boundary():
+	captured = {}
+	request = OpenAIAdapter().compile_specification(
+		instructions="Compile.",
+		input_data={"brief": "Distributor"},
+		output_schema={"type": "object"},
+	)
+
+	def transport(endpoint, body, headers, timeout):
+		captured.update(endpoint=endpoint, body=body, headers=headers, timeout=timeout)
+		return AIHTTPResult(200, {"id": "resp_test", "output": []}, "request_test")
+
+	result = execute_request(request, credential="unit-test-secret", transport=transport)
+	assert result.payload["id"] == "resp_test"
+	assert captured["headers"]["Authorization"] == "Bearer unit-test-secret"
+	assert "unit-test-secret" not in json.dumps(request.as_dict())
+
+
+def test_executor_errors_do_not_echo_provider_bodies_or_credentials():
+	request = OpenAIAdapter().compile_specification(
+		instructions="Compile.",
+		input_data={},
+		output_schema={"type": "object"},
+	)
+
+	def transport(endpoint, body, headers, timeout):
+		return AIHTTPResult(401, {"error": "body must not escape"}, "request_test")
+
+	with pytest.raises(AIExecutionError) as raised:
+		execute_request(request, credential="unit-test-secret", transport=transport)
+	assert "body must not escape" not in str(raised.value)
+	assert "unit-test-secret" not in str(raised.value)

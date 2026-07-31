@@ -17,16 +17,24 @@
   "constraints",
   "section_output",
   "compiled_specification",
+  "model_output",
   "assumptions",
+  "inferred_values",
   "section_provenance",
   "ai_provider",
   "ai_model",
+  "adapter_version",
   "prompt_version",
+  "compilation_instructions",
   "column_break_provenance",
   "schema_version",
   "catalog_hash",
   "input_hash",
   "output_hash",
+  "model_output_hash",
+  "provider_response_id",
+  "provider_usage",
+  "compiled_on",
   "section_approval",
   "approved_by",
   "column_break_approval",
@@ -101,9 +109,24 @@
    "options": "JSON"
   },
   {
+   "description": "Immutable provenance copy of the provider's structured output.",
+   "fieldname": "model_output",
+   "fieldtype": "Code",
+   "label": "Original Model Output",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
    "fieldname": "assumptions",
    "fieldtype": "Code",
    "label": "Assumptions",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "inferred_values",
+   "fieldtype": "Code",
+   "label": "AI-Inferred Values",
    "options": "JSON",
    "read_only": 1
   },
@@ -124,9 +147,21 @@
    "label": "AI Model"
   },
   {
+   "fieldname": "adapter_version",
+   "fieldtype": "Data",
+   "label": "Adapter Version",
+   "read_only": 1
+  },
+  {
    "fieldname": "prompt_version",
    "fieldtype": "Data",
    "label": "Prompt Version"
+  },
+  {
+   "fieldname": "compilation_instructions",
+   "fieldtype": "Long Text",
+   "label": "Compilation Instructions",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_provenance",
@@ -155,6 +190,31 @@
    "fieldname": "output_hash",
    "fieldtype": "Data",
    "label": "Output Hash",
+   "read_only": 1
+  },
+  {
+   "fieldname": "model_output_hash",
+   "fieldtype": "Data",
+   "label": "Original Model Output Hash",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provider_response_id",
+   "fieldtype": "Data",
+   "label": "Provider Response ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provider_usage",
+   "fieldtype": "Code",
+   "label": "Provider Usage",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "compiled_on",
+   "fieldtype": "Datetime",
+   "label": "Compiled On",
    "read_only": 1
   },
   {

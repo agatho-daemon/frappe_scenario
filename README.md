@@ -173,6 +173,27 @@ Claude or Codex can:
 The submitted specification is treated as untrusted data. Only registered
 provider paths and schema-valid values can reach the deterministic generator.
 
+### Built-in AI Brief compilation
+
+A System Manager may create and enable a `Scenario AI Provider` record for
+`openai`, store the API key in its encrypted credential field, and optionally
+select a model. The built-in workflow is then available through the POST-only
+method `frappe_scenario.api.ai.compile_brief`. It:
+
+1. Sends the brief, constraints, current schema, and current capability
+   catalogue through the registered adapter.
+2. Requires structured output and validates the returned specification using
+   the same schema and semantic checks as a hand-authored specification.
+3. Creates a `Scenario AI Draft` containing the original model output,
+   editable specification, assumptions, inferred values, model/adapter/prompt
+   versions, catalogue hash, response ID, usage, and hashes.
+4. Leaves the draft in `Pending Review`; it never starts generation.
+
+Approval is refused if the site's capability catalogue changed after
+compilation. Credentials are added only at the HTTP execution boundary, are
+sent only to the official OpenAI Responses endpoint, and are never stored in
+the draft or returned by Scenario APIs.
+
 ## Tests
 
 Pure tests need no site:
@@ -205,9 +226,9 @@ develop. Each compatibility Bench must test the exact same committed revision.
 ## Current boundaries
 
 - Only the smoke-scale HVAC distribution vertical slice is proven end to end.
-- OpenAI adapter discovery, encrypted configuration, and structured request
-  construction are implemented. Built-in execution and AI Brief compilation
-  remain subsequent milestones.
+- OpenAI adapter discovery, encrypted configuration, structured request
+  execution, and reviewable AI Brief compilation are implemented. The
+  plausibility-review and grounded-tutor workflows remain subsequent batches.
 - No Crispy Print or other third-party app code is modified or imported.
 - HRMS, manufacturing, projects, assets, lending, regional compliance, and
   broader archetypes remain future providers.

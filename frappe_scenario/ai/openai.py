@@ -34,8 +34,8 @@ class OpenAIAdapter(AIAdapter):
 	) -> AIConfigurationStatus:
 		endpoint = str(configuration.get("base_url") or DEFAULT_ENDPOINT)
 		messages: list[str] = []
-		if not endpoint.startswith("https://"):
-			messages.append("The OpenAI endpoint must use HTTPS.")
+		if endpoint != DEFAULT_ENDPOINT:
+			messages.append("The built-in OpenAI adapter only sends credentials to the official endpoint.")
 		if not configured:
 			messages.append("An encrypted OpenAI API credential is required.")
 		return AIConfigurationStatus(

@@ -114,6 +114,14 @@ def approve_draft(draft: str) -> dict[str, Any]:
 	doc = frappe.get_doc(DRAFT_DOCTYPE, draft)
 	if not doc.compiled_specification:
 		frappe.throw(_("This draft has no compiled specification to approve."))
+	current_hash = capability_catalog()["catalog_hash"]
+	if doc.catalog_hash and doc.catalog_hash != current_hash:
+		frappe.throw(
+			_(
+				"The site's capability catalogue changed after this draft was compiled. Recompile it before approval."
+			),
+			title=_("Capability Catalogue Changed"),
+		)
 
 	doc.approval_status = "Approved"
 	doc.save()

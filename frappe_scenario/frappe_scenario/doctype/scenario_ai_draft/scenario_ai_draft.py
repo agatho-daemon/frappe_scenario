@@ -1,12 +1,6 @@
 # Copyright (c) 2026, Agathodaemon and contributors
 # For license information, please see license.txt
-"""Scenario AI Draft.
-
-The record of an external agent turning real-world intent into a specification.
-This app never calls a model: the draft arrives already compiled, is validated
-against the schema like any other input, and cannot generate anything until a
-person approves it.
-"""
+"""A reviewable, provenance-preserving AI or external-agent compilation."""
 
 import hashlib
 import json
@@ -28,8 +22,16 @@ class ScenarioAIDraft(Document):
 	def validate(self) -> None:
 		self.input_hash = _digest({"brief": self.brief, "constraints": _parse(self.constraints)})
 		self._validate_compiled_specification()
+		self._retain_model_output_hash()
 		self._track_human_edit()
 		self._stamp_approval()
+
+	def _retain_model_output_hash(self) -> None:
+		if self.model_output and not self.model_output_hash:
+			try:
+				self.model_output_hash = _digest(json.loads(self.model_output))
+			except ValueError:
+				frappe.throw(_("Model output must be valid JSON."))
 
 	def _validate_compiled_specification(self) -> None:
 		if not self.compiled_specification:
