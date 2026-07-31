@@ -143,6 +143,28 @@ def test_depth_profile_is_defensive_and_unknown_depth_is_rejected():
 		get_depth_profile("Exhaustive")
 
 
+def test_operational_depth_defaults_include_commercial_and_accounting_controls():
+	essentials = get_depth_profile("Essentials")
+	complex_operations = get_depth_profile("Complex Operations")
+
+	assert essentials["operations"]["opportunity_ratio"] > 0
+	assert essentials["operations"]["quotation_ratio"] > 0
+	assert essentials["operations"]["stock_transfers"] > 0
+	assert essentials["accounting_controls"]["period_closing"] is True
+	assert (
+		complex_operations["accounting_controls"]["bank_reconciliation_ratio"]
+		> essentials["accounting_controls"]["bank_reconciliation_ratio"]
+	)
+
+	resolved, _ = resolve_specification(
+		{
+			"schema_version": "1.0",
+			"scenario": {"archetype": "hvac_distribution", "country": "Kuwait"},
+		}
+	)
+	assert "erpnext.commercial" in resolved["providers"]
+
+
 def test_an_unknown_scale_is_refused():
 	with pytest.raises(ScenarioError):
 		get_scale_profile("enormous")

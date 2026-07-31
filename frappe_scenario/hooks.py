@@ -18,6 +18,7 @@ scenario_providers = [
 	"frappe_scenario.providers.erpnext_parties.ErpnextPartiesProvider",
 	"frappe_scenario.providers.erpnext_catalog.ErpnextCatalogProvider",
 	"frappe_scenario.providers.erpnext_opening.ErpnextOpeningProvider",
+	"frappe_scenario.providers.erpnext_commercial.ErpnextCommercialProvider",
 	"frappe_scenario.providers.erpnext_buying.ErpnextBuyingProvider",
 	"frappe_scenario.providers.erpnext_selling.ErpnextSellingProvider",
 	"frappe_scenario.providers.erpnext_payments.ErpnextPaymentsProvider",

@@ -88,4 +88,7 @@ def smoke_specification() -> dict:
 		"partial_deliveries": 0.2,
 		"returns": 0.15,
 	}
+	# Exercise the optional, explicitly configured tax path in the real ERPNext
+	# lifecycle without asserting that Kuwait has a particular statutory rate.
+	specification["accounting_controls"] = {"indirect_tax_rate": 5}
 	return specification

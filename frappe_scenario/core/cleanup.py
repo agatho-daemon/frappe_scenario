@@ -28,16 +28,19 @@ ProgressCallback = Callable[[str, int, int], None]
 
 #: Cancelling these cascades to their own dependents, so they must go first.
 _CANCEL_PRIORITY = {
-	"Payment Entry": 0,
-	"Journal Entry": 1,
-	"Sales Invoice": 2,
-	"Purchase Invoice": 3,
-	"Delivery Note": 4,
-	"Purchase Receipt": 5,
-	"Stock Entry": 6,
-	"Stock Reconciliation": 7,
-	"Sales Order": 8,
-	"Purchase Order": 9,
+	"Period Closing Voucher": 0,
+	"Bank Transaction": 1,
+	"Payment Entry": 2,
+	"Journal Entry": 3,
+	"Sales Invoice": 4,
+	"Purchase Invoice": 5,
+	"Delivery Note": 6,
+	"Purchase Receipt": 7,
+	"Stock Entry": 8,
+	"Stock Reconciliation": 9,
+	"Sales Order": 10,
+	"Purchase Order": 11,
+	"Quotation": 12,
 }
 
 
@@ -102,27 +105,58 @@ def _external_blockers(
 
 def _cancel(records: list[ManifestRecord], result: CleanupResult) -> None:
 	submitted = [record for record in records if record.docstatus == 1 and record.operation == "created"]
-	submitted.sort(
-		key=lambda record: (_CANCEL_PRIORITY.get(record.doctype, 50), -record.sequence),
+
+	def cancellation_key(record: ManifestRecord) -> tuple[int, int, int]:
+		# ERPNext return documents must be cancelled before their source vouchers,
+		# even when the return is a Delivery Note and the source chain also contains
+		# a Sales Invoice. Do not rely on creation sequence across DocTypes here.
+		is_return = bool(
+			frappe.get_meta(record.doctype).has_field("is_return")
+			and frappe.db.get_value(record.doctype, record.name, "is_return")
+		)
+		return_priority = {
+			"Delivery Note": 0,
+			"Purchase Receipt": 1,
+			"Sales Invoice": 2,
+			"Purchase Invoice": 3,
+		}
+		priority = (
+			return_priority.get(record.doctype, 20) if is_return else _CANCEL_PRIORITY.get(record.doctype, 50)
+		)
+		return (0 if is_return else 1, priority, -record.sequence)
+
+	submitted.sort(key=cancellation_key)
+	has_stock_settings = bool(frappe.db.exists("DocType", "Stock Settings"))
+	negative_stock_before = (
+		frappe.db.get_single_value("Stock Settings", "allow_negative_stock") if has_stock_settings else None
 	)
-	for record in submitted:
-		if not frappe.db.exists(record.doctype, record.name):
-			continue
-		try:
-			doc = frappe.get_doc(record.doctype, record.name)
-			if doc.docstatus == 1:
-				doc.flags.ignore_permissions = True
-				doc.cancel()
-				result.cancelled += 1
-		except Exception as exception:
-			result.blockers.append(
-				{
-					"doctype": record.doctype,
-					"name": record.name,
-					"phase": "cancel",
-					"message": f"Could not cancel {record.doctype} {record.name}: {exception}",
-				}
-			)
+	try:
+		# Reversing a complete historical dataset can temporarily make an older
+		# stock voucher negative even though the final cleaned state is empty.
+		# Permit that transient state only for cancellation, then restore it.
+		if has_stock_settings:
+			frappe.db.set_single_value("Stock Settings", "allow_negative_stock", 1)
+		for record in submitted:
+			if not frappe.db.exists(record.doctype, record.name):
+				continue
+			try:
+				doc = frappe.get_doc(record.doctype, record.name)
+				if doc.docstatus == 1:
+					doc.flags.ignore_permissions = True
+					doc.cancel()
+					result.cancelled += 1
+			except Exception as exception:
+				result.blockers.append(
+					{
+						"doctype": record.doctype,
+						"name": record.name,
+						"phase": "cancel",
+						"message": f"Could not cancel {record.doctype} {record.name}: {exception}",
+					}
+				)
+	finally:
+		if has_stock_settings:
+			frappe.db.set_single_value("Stock Settings", "allow_negative_stock", negative_stock_before)
 
 
 def _delete(records: list[ManifestRecord], result: CleanupResult) -> None:

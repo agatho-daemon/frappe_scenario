@@ -80,6 +80,7 @@ def compile_quick_demo_specification(
 			"erpnext.parties": {},
 			"erpnext.catalog": {},
 			"erpnext.opening": {"months_of_cover": 3},
+			"erpnext.commercial": {},
 			"erpnext.buying": {},
 			"erpnext.selling": {},
 			"erpnext.payments": {

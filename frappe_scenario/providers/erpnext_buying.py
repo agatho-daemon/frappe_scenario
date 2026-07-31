@@ -28,6 +28,7 @@ from frappe_scenario.core.provider import (
 )
 from frappe_scenario.core.validation import ValidationResult
 from frappe_scenario.providers.erpnext_catalog import ITEMS, WAREHOUSES
+from frappe_scenario.providers.erpnext_commercial import TAXES
 from frappe_scenario.providers.erpnext_foundation import ACCOUNTS, COMPANY, PAYMENT_TERMS
 from frappe_scenario.providers.erpnext_opening import STOCK
 from frappe_scenario.providers.erpnext_parties import SUPPLIERS
@@ -43,6 +44,7 @@ from frappe_scenario.providers.support.calendar_tools import (
 ORDERS = "erpnext.buying.purchase_orders"
 RECEIPTS = "erpnext.buying.purchase_receipts"
 INVOICES = "erpnext.buying.purchase_invoices"
+RETURNS = "erpnext.buying.returns"
 
 PURCHASE_ORDER_MODULE = "erpnext.buying.doctype.purchase_order"
 PURCHASE_RECEIPT_MODULE = "erpnext.stock.doctype.purchase_receipt"
@@ -55,7 +57,7 @@ COST_VARIANCE = 0.05
 
 class ErpnextBuyingProvider(ScenarioProvider):
 	id = "erpnext.buying"
-	version = "0.2.0"
+	version = "0.3.0"
 	title = "ERPNext Buying"
 	description = "Purchase orders, receipts, and invoices linked through ERPNext's own mappers."
 	role = "extender"
@@ -64,8 +66,8 @@ class ErpnextBuyingProvider(ScenarioProvider):
 
 	requires_apps = {"erpnext": ">=15.0.0"}
 	requires_capabilities = {COMPANY, ACCOUNTS, ITEMS, WAREHOUSES, SUPPLIERS, PAYMENT_TERMS}
-	optional_capabilities = {STOCK}
-	provides_capabilities = {ORDERS, RECEIPTS, INVOICES}
+	optional_capabilities = {STOCK, TAXES}
+	provides_capabilities = {ORDERS, RECEIPTS, INVOICES, RETURNS}
 
 	capabilities = [
 		CapabilityDeclaration(
@@ -88,6 +90,13 @@ class ErpnextBuyingProvider(ScenarioProvider):
 			doctypes=["Purchase Invoice"],
 			requires=[RECEIPTS],
 			validation_rules=["erpnext.buying.invoice_linked"],
+		),
+		CapabilityDeclaration(
+			id=RETURNS,
+			description="Purchase receipt returns and linked supplier debit notes.",
+			doctypes=["Purchase Receipt", "Purchase Invoice"],
+			requires=[RECEIPTS, INVOICES],
+			validation_rules=["erpnext.buying.return_links"],
 		),
 	]
 
@@ -150,6 +159,13 @@ class ErpnextBuyingProvider(ScenarioProvider):
 			doctype="Purchase Invoice",
 			count=lifecycle["purchase_invoices"],
 		)
+		returns = round(lifecycle["purchase_invoices"] * float(operations.get("returns") or 0))
+		plan.step(
+			RETURNS,
+			"Return received goods and issue linked supplier debit notes.",
+			doctype="Purchase Invoice",
+			count=returns * 2,
+		)
 		plan.assumptions.append(f"Order rates vary within {COST_VARIANCE:.0%} of the recorded item cost.")
 		plan.cleanup_notes.append(
 			"Cleanup cancels invoices, then receipts, then orders, before deleting them."
@@ -172,7 +188,7 @@ class ErpnextBuyingProvider(ScenarioProvider):
 
 		if not suppliers or not items:
 			context.warning("Buying was skipped: the scenario has no suppliers or no stock items.")
-			for capability in (ORDERS, RECEIPTS, INVOICES):
+			for capability in (ORDERS, RECEIPTS, INVOICES, RETURNS):
 				context.publish(capability, [])
 			return result
 
@@ -239,14 +255,25 @@ class ErpnextBuyingProvider(ScenarioProvider):
 				if invoice is not None:
 					invoices.append(invoice)
 
+		returns = self._create_returns(
+			context,
+			adapter=adapter,
+			invoices=invoices,
+			receipts=receipts,
+			random=random,
+			ratio=float(operations.get("returns") or 0),
+		)
+
 		context.publish(ORDERS, orders)
 		context.publish(RECEIPTS, receipts)
 		context.publish(INVOICES, invoices)
-		result.published.extend([ORDERS, RECEIPTS, INVOICES])
+		context.publish(RETURNS, returns)
+		result.published.extend([ORDERS, RECEIPTS, INVOICES, RETURNS])
 		result.summary = {
 			"purchase_orders": len(orders),
 			"purchase_receipts": len(receipts),
 			"purchase_invoices": len(invoices),
+			"purchase_returns_and_debit_notes": len(returns),
 		}
 		return result
 
@@ -310,6 +337,19 @@ class ErpnextBuyingProvider(ScenarioProvider):
 			"payment_terms_template": terms.get(supplier.get("term_key") or "cash"),
 			"items": lines,
 		}
+		taxes = context.optional(TAXES) or {}
+		if taxes.get("purchase_template"):
+			payload["taxes_and_charges"] = taxes["purchase_template"]
+			payload["taxes"] = [
+				{
+					"category": "Total",
+					"add_deduct_tax": "Add",
+					"charge_type": "On Net Total",
+					"account_head": taxes["account"],
+					"rate": taxes["rate"],
+					"description": f"Scenario Illustrative Tax {taxes['rate']:g}%",
+				}
+			]
 		# ERPNext v16 introduced a transaction clock field whose default is the
 		# current time. Keep it seeded by the scenario rather than the wall clock.
 		if context.adapter.has_field("Purchase Order", "transaction_time"):
@@ -427,12 +467,79 @@ class ErpnextBuyingProvider(ScenarioProvider):
 			"outstanding": float(doc.outstanding_amount or 0),
 		}
 
+	def _create_returns(
+		self,
+		context: ScenarioContext,
+		*,
+		adapter: Any,
+		invoices: list[dict[str, Any]],
+		receipts: list[dict[str, Any]],
+		random: Any,
+		ratio: float,
+	) -> list[dict[str, Any]]:
+		if ratio <= 0 or not invoices:
+			return []
+
+		target = min(len(invoices), max(1, round(len(invoices) * ratio)))
+		receipt_by_name = {entry["name"]: entry for entry in receipts}
+		make_return_doc = frappe.get_attr("erpnext.controllers.sales_and_purchase_return.make_return_doc")
+		records: list[dict[str, Any]] = []
+		for invoice in random.shuffled(invoices)[:target]:
+			posting_date = clamp(
+				datetime.date.fromisoformat(invoice["posting_date"]) + datetime.timedelta(days=1),
+				datetime.date.fromisoformat(invoice["posting_date"]),
+				context.anchor_date,
+			)
+			receipt = receipt_by_name.get(invoice["purchase_receipt"])
+			if receipt:
+				context.current_capability = RETURNS
+				purchase_return = make_return_doc("Purchase Receipt", receipt["name"])
+				adapter.set_posting_datetime(purchase_return, posting_date, POSTING_TIME)
+				context.insert_doc(
+					purchase_return,
+					capability=RETURNS,
+					submit=True,
+					logical_id=f"purchase_return:{receipt['name']}",
+					dependencies=[f"Purchase Receipt/{receipt['name']}"],
+				)
+				records.append(
+					{
+						"name": purchase_return.name,
+						"doctype": "Purchase Receipt",
+						"return_against": receipt["name"],
+						"posting_date": posting_date.isoformat(),
+						"grand_total": float(purchase_return.grand_total or 0),
+					}
+				)
+
+			context.current_capability = RETURNS
+			debit_note = make_return_doc("Purchase Invoice", invoice["name"])
+			adapter.set_posting_datetime(debit_note, posting_date, POSTING_TIME)
+			context.insert_doc(
+				debit_note,
+				capability=RETURNS,
+				submit=True,
+				logical_id=f"purchase_debit_note:{invoice['name']}",
+				dependencies=[f"Purchase Invoice/{invoice['name']}"],
+			)
+			records.append(
+				{
+					"name": debit_note.name,
+					"doctype": "Purchase Invoice",
+					"return_against": invoice["name"],
+					"posting_date": posting_date.isoformat(),
+					"grand_total": float(debit_note.grand_total or 0),
+				}
+			)
+		return records
+
 	# -- validation ----------------------------------------------------------
 	def validate(self, context: ScenarioContext) -> ValidationResult:
 		result = ValidationResult()
 		orders = context.optional(ORDERS) or []
 		receipts = context.optional(RECEIPTS) or []
 		invoices = context.optional(INVOICES) or []
+		returns = context.optional(RETURNS) or []
 
 		for order in orders:
 			order_date = datetime.date.fromisoformat(order["order_date"])
@@ -491,6 +598,17 @@ class ErpnextBuyingProvider(ScenarioProvider):
 					capability=INVOICES,
 					doctype="Purchase Invoice",
 					record=invoice["name"],
+				)
+
+		for entry in returns:
+			if not entry.get("return_against"):
+				result.error(
+					rule="erpnext.buying.return_links",
+					message=f"{entry['doctype']} {entry['name']} is not linked to its source.",
+					provider=self.id,
+					capability=RETURNS,
+					doctype=entry["doctype"],
+					record=entry["name"],
 				)
 		return result
 

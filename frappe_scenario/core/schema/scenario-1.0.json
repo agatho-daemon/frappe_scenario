@@ -252,6 +252,15 @@
 					"$ref": "#/$defs/ratio",
 					"description": "Relative weighting of purchasing toward strategic suppliers."
 				},
+				"opportunity_ratio": {
+					"$ref": "#/$defs/ratio"
+				},
+				"quotation_ratio": {
+					"$ref": "#/$defs/ratio"
+				},
+				"stock_transfers": {
+					"$ref": "#/$defs/positive_integer"
+				},
 				"warranty_claims": {
 					"$ref": "#/$defs/ratio"
 				}
@@ -286,6 +295,28 @@
 					"type": "boolean"
 				},
 				"year_end_adjustments": {
+					"type": "boolean"
+				}
+			}
+		},
+		"accounting_controls": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"indirect_tax_rate": {
+					"type": "number",
+					"minimum": 0,
+					"maximum": 100
+				},
+				"credit_limit_months": {
+					"type": "number",
+					"minimum": 1,
+					"maximum": 24
+				},
+				"bank_reconciliation_ratio": {
+					"$ref": "#/$defs/ratio"
+				},
+				"period_closing": {
 					"type": "boolean"
 				}
 			}

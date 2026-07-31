@@ -32,19 +32,22 @@ from frappe_scenario.core.validation import ValidationResult
 from frappe_scenario.providers.erpnext_buying import INVOICES as PURCHASE_INVOICES
 from frappe_scenario.providers.erpnext_foundation import ACCOUNTS, COMPANY
 from frappe_scenario.providers.erpnext_selling import INVOICES as SALES_INVOICES
+from frappe_scenario.providers.erpnext_selling import RETURNS as SALES_RETURNS
 from frappe_scenario.providers.support import erpnext_tools as tools
-from frappe_scenario.providers.support.calendar_tools import clamp, month_end, month_starts
+from frappe_scenario.providers.support.calendar_tools import clamp, fiscal_years, month_end, month_starts
 
 RECEIPTS = "erpnext.accounts.customer_payments"
 PAYMENTS = "erpnext.accounts.supplier_payments"
 ACCRUALS = "erpnext.accounts.accruals"
+BANK_RECONCILIATION = "erpnext.accounts.bank_reconciliation"
+PERIOD_CLOSING = "erpnext.accounts.period_closing"
 
 PAYMENT_ENTRY_MODULE = "erpnext.accounts.doctype.payment_entry.payment_entry"
 
 
 class ErpnextPaymentsProvider(ScenarioProvider):
 	id = "erpnext.payments"
-	version = "0.2.0"
+	version = "0.3.0"
 	title = "ERPNext Payments and Accruals"
 	description = "Customer receipts, supplier payments, and recurring accrual journal entries."
 	role = "extender"
@@ -53,8 +56,8 @@ class ErpnextPaymentsProvider(ScenarioProvider):
 
 	requires_apps = {"erpnext": ">=15.0.0"}
 	requires_capabilities = {COMPANY, ACCOUNTS}
-	optional_capabilities = {SALES_INVOICES, PURCHASE_INVOICES}
-	provides_capabilities = {RECEIPTS, PAYMENTS, ACCRUALS}
+	optional_capabilities = {SALES_INVOICES, SALES_RETURNS, PURCHASE_INVOICES}
+	provides_capabilities = {RECEIPTS, PAYMENTS, ACCRUALS, BANK_RECONCILIATION, PERIOD_CLOSING}
 
 	capabilities = [
 		CapabilityDeclaration(
@@ -63,6 +66,21 @@ class ErpnextPaymentsProvider(ScenarioProvider):
 			doctypes=["Payment Entry"],
 			optional_requires=[SALES_INVOICES],
 			validation_rules=["erpnext.payments.receivable_reconciles", "erpnext.payments.overdue_profile"],
+		),
+		CapabilityDeclaration(
+			id=BANK_RECONCILIATION,
+			description="Bank statement transactions reconciled to generated Payment Entries.",
+			doctypes=["Bank Transaction"],
+			requires=[ACCOUNTS],
+			optional_requires=[RECEIPTS, PAYMENTS],
+			validation_rules=["erpnext.payments.bank_reconciled"],
+		),
+		CapabilityDeclaration(
+			id=PERIOD_CLOSING,
+			description="Submitted Period Closing Vouchers through the scenario anchor date.",
+			doctypes=["Period Closing Voucher"],
+			requires=[ACCOUNTS],
+			validation_rules=["erpnext.payments.period_closed"],
 		),
 		CapabilityDeclaration(
 			id=PAYMENTS,
@@ -114,6 +132,25 @@ class ErpnextPaymentsProvider(ScenarioProvider):
 				doctype="Journal Entry",
 				count=context.history_months,
 			)
+		controls = context.section("accounting_controls")
+		reconciled = round(
+			(lifecycle["customer_payments"] + lifecycle["supplier_payments"])
+			* float(controls.get("bank_reconciliation_ratio") or 0)
+		)
+		plan.step(
+			BANK_RECONCILIATION,
+			"Import bank statement rows and reconcile them to generated payments.",
+			doctype="Bank Transaction",
+			count=reconciled,
+		)
+		plan.step(
+			PERIOD_CLOSING,
+			"Close each fiscal period represented by the generated history.",
+			doctype="Period Closing Voucher",
+			count=len(fiscal_years(context.start_date, context.anchor_date))
+			if controls.get("period_closing")
+			else 0,
+		)
 		if float(accounting.get("bad_debt_cases") or 0) > 0:
 			plan.unsupported.append("accounting.bad_debt_cases is not implemented yet and will be ignored.")
 		plan.assumptions.append(
@@ -154,14 +191,101 @@ class ErpnextPaymentsProvider(ScenarioProvider):
 
 		accruals = self._post_accruals(context, company, accounts)
 		context.publish(ACCRUALS, accruals)
+		bank_transactions = self._reconcile_bank(context, accounts, receipts, payments)
+		context.publish(BANK_RECONCILIATION, bank_transactions)
+		closings = self._close_periods(context, company, accounts)
+		context.publish(PERIOD_CLOSING, closings)
 
-		result.published.extend([RECEIPTS, PAYMENTS, ACCRUALS])
+		result.published.extend([RECEIPTS, PAYMENTS, ACCRUALS, BANK_RECONCILIATION, PERIOD_CLOSING])
 		result.summary = {
 			"customer_payments": len(receipts),
 			"supplier_payments": len(payments),
 			"accruals": len(accruals),
+			"bank_transactions": len(bank_transactions),
+			"period_closings": len(closings),
 		}
 		return result
+
+	def _reconcile_bank(
+		self,
+		context: ScenarioContext,
+		accounts: dict[str, Any],
+		receipts: list[dict[str, Any]],
+		payments: list[dict[str, Any]],
+	) -> list[dict[str, Any]]:
+		context.current_capability = BANK_RECONCILIATION
+		ratio = float(context.section("accounting_controls").get("bank_reconciliation_ratio") or 0)
+		if ratio <= 0 or not accounts.get("bank_account"):
+			return []
+		entries = [
+			*(dict(row, direction="deposit") for row in receipts),
+			*(dict(row, direction="withdrawal") for row in payments),
+		]
+		count = min(len(entries), round(len(entries) * ratio))
+		results: list[dict[str, Any]] = []
+		for index, payment in enumerate(entries[:count], 1):
+			amount = float(payment["amount"])
+			payload = {
+				"doctype": "Bank Transaction",
+				"date": payment["posting_date"],
+				"bank_account": accounts["bank_account"],
+				"company": context.require(COMPANY),
+				"currency": context.currency,
+				"description": f"Scenario statement match for {payment['name']}",
+				"reference_number": f"SCN-BANK-{index:05d}",
+				"deposit": amount if payment["direction"] == "deposit" else 0,
+				"withdrawal": amount if payment["direction"] == "withdrawal" else 0,
+				"payment_entries": [
+					{
+						"payment_document": "Payment Entry",
+						"payment_entry": payment["name"],
+						"allocated_amount": 0,
+					}
+				],
+			}
+			doc = context.insert(
+				payload,
+				capability=BANK_RECONCILIATION,
+				submit=True,
+				logical_id=f"bank_transaction:{index:05d}",
+				dependencies=[f"Payment Entry/{payment['name']}"],
+			)
+			results.append({"name": doc.name, "payment_entry": payment["name"], "status": doc.status})
+		return results
+
+	def _close_periods(
+		self, context: ScenarioContext, company: str, accounts: dict[str, Any]
+	) -> list[dict[str, Any]]:
+		context.current_capability = PERIOD_CLOSING
+		if not context.section("accounting_controls").get("period_closing"):
+			return []
+		closing_account = accounts.get("equity")
+		if not closing_account:
+			context.warning("Period closing was skipped because no equity closing account was resolved.")
+			return []
+		results: list[dict[str, Any]] = []
+		for start, end in fiscal_years(context.start_date, context.anchor_date):
+			period_end = min(end, context.anchor_date)
+			fiscal_year = tools.fiscal_year_for(period_end, company)
+			if not fiscal_year:
+				continue
+			doc = context.insert(
+				{
+					"doctype": "Period Closing Voucher",
+					"transaction_date": period_end,
+					"company": company,
+					"fiscal_year": fiscal_year,
+					"period_start_date": start,
+					"period_end_date": period_end,
+					"closing_account_head": closing_account,
+					"remarks": f"Scenario period closing through {period_end.isoformat()}.",
+				},
+				capability=PERIOD_CLOSING,
+				submit=True,
+				logical_id=f"period_closing:{period_end.isoformat()}",
+			)
+			results.append({"name": doc.name, "period_end_date": period_end.isoformat()})
+		return results
 
 	# -- settlement ----------------------------------------------------------
 	def _settle(
@@ -366,7 +490,37 @@ class ErpnextPaymentsProvider(ScenarioProvider):
 		self._validate_receivable(context, company, accounts.get("receivable"), result)
 		self._validate_journals(context, result)
 		self._validate_overdue(context, result)
+		self._validate_bank_reconciliation(context, result)
+		self._validate_period_closing(context, result)
 		return result
+
+	def _validate_bank_reconciliation(self, context: ScenarioContext, result: ValidationResult) -> None:
+		for entry in context.optional(BANK_RECONCILIATION) or []:
+			doc = frappe.db.get_value(
+				"Bank Transaction", entry["name"], ["docstatus", "status"], as_dict=True
+			)
+			if not doc or doc.docstatus != 1 or doc.status != "Reconciled":
+				result.error(
+					rule="erpnext.payments.bank_reconciliation",
+					message=f"Bank Transaction {entry['name']} is not reconciled.",
+					provider=self.id,
+					capability=BANK_RECONCILIATION,
+					doctype="Bank Transaction",
+					record=entry["name"],
+					observed=doc,
+				)
+
+	def _validate_period_closing(self, context: ScenarioContext, result: ValidationResult) -> None:
+		for entry in context.optional(PERIOD_CLOSING) or []:
+			if frappe.db.get_value("Period Closing Voucher", entry["name"], "docstatus") != 1:
+				result.error(
+					rule="erpnext.payments.period_closing",
+					message=f"Period Closing Voucher {entry['name']} is not submitted.",
+					provider=self.id,
+					capability=PERIOD_CLOSING,
+					doctype="Period Closing Voucher",
+					record=entry["name"],
+				)
 
 	def _validate_receivable(
 		self,
@@ -380,11 +534,17 @@ class ErpnextPaymentsProvider(ScenarioProvider):
 		if not account or not invoices:
 			return
 
+		credit_notes = [
+			entry["name"]
+			for entry in context.optional(SALES_RETURNS) or []
+			if entry.get("doctype") == "Sales Invoice"
+		]
+		names = [invoice["name"] for invoice in invoices] + credit_notes
 		outstanding = sum(
 			float(row.outstanding_amount or 0)
 			for row in frappe.get_all(
 				"Sales Invoice",
-				filters={"name": ("in", [invoice["name"] for invoice in invoices]), "docstatus": 1},
+				filters={"name": ("in", names), "docstatus": 1},
 				fields=["outstanding_amount"],
 			)
 		)

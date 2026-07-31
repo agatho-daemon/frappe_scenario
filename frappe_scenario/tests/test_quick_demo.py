@@ -58,6 +58,7 @@ def test_quick_demo_compilation_is_deterministic_and_requests_the_full_lifecycle
 		"erpnext.parties",
 		"erpnext.catalog",
 		"erpnext.opening",
+		"erpnext.commercial",
 		"erpnext.buying",
 		"erpnext.selling",
 		"erpnext.payments",

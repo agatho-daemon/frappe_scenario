@@ -33,21 +33,39 @@ DEPTH_PROFILES: dict[str, dict[str, Any]] = {
 		"selling": {"delivery_ratio": 0.8, "invoice_ratio": 0.85},
 		"buying": {"receipt_ratio": 0.8, "invoice_ratio": 0.85},
 		"accounting": {"customer_payment_ratio": 0.65, "supplier_payment_ratio": 0.65},
-		"operations": {"partial_deliveries": 0.02},
+		"operations": {
+			"partial_deliveries": 0.02,
+			"opportunity_ratio": 0.15,
+			"quotation_ratio": 0.6,
+			"stock_transfers": 1,
+		},
+		"accounting_controls": {"bank_reconciliation_ratio": 0.5, "period_closing": True},
 	},
 	"Everyday Business": {
 		"description": "Normal operational coverage with open orders, partial fulfillment, and ageing.",
 		"selling": {"delivery_ratio": 0.9, "invoice_ratio": 0.92},
 		"buying": {"receipt_ratio": 0.9, "invoice_ratio": 0.9},
 		"accounting": {"customer_payment_ratio": 0.75, "supplier_payment_ratio": 0.7},
-		"operations": {"partial_deliveries": 0.08},
+		"operations": {
+			"partial_deliveries": 0.08,
+			"opportunity_ratio": 0.25,
+			"quotation_ratio": 0.7,
+			"stock_transfers": 1,
+		},
+		"accounting_controls": {"bank_reconciliation_ratio": 0.65, "period_closing": True},
 	},
 	"Complex Operations": {
 		"description": "Dense lifecycle coverage with more partial fulfillment and outstanding balances.",
 		"selling": {"delivery_ratio": 0.95, "invoice_ratio": 0.95},
 		"buying": {"receipt_ratio": 0.95, "invoice_ratio": 0.95},
 		"accounting": {"customer_payment_ratio": 0.82, "supplier_payment_ratio": 0.78},
-		"operations": {"partial_deliveries": 0.18},
+		"operations": {
+			"partial_deliveries": 0.18,
+			"opportunity_ratio": 0.4,
+			"quotation_ratio": 0.8,
+			"stock_transfers": 2,
+		},
+		"accounting_controls": {"bank_reconciliation_ratio": 0.8, "period_closing": True},
 	},
 }
 
@@ -69,9 +87,12 @@ def depth_specification_defaults(depth: str) -> dict[str, Any]:
 	return {
 		"operations": profile["operations"],
 		"accounting": profile["accounting"],
+		"accounting_controls": profile["accounting_controls"],
 		"providers": {
+			"erpnext.commercial": {},
 			"erpnext.selling": profile["selling"],
 			"erpnext.buying": profile["buying"],
+			"erpnext.payments": {},
 		},
 	}
 

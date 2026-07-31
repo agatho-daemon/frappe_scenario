@@ -29,6 +29,7 @@ from frappe_scenario.core.provider import (
 )
 from frappe_scenario.core.validation import ValidationResult
 from frappe_scenario.providers.erpnext_catalog import ITEMS, WAREHOUSES
+from frappe_scenario.providers.erpnext_commercial import TAXES
 from frappe_scenario.providers.erpnext_foundation import ACCOUNTS, COMPANY, PAYMENT_TERMS
 from frappe_scenario.providers.erpnext_opening import STOCK
 from frappe_scenario.providers.erpnext_parties import CUSTOMERS
@@ -58,7 +59,7 @@ MAX_DISCOUNT = 0.08
 
 class ErpnextSellingProvider(ScenarioProvider):
 	id = "erpnext.selling"
-	version = "0.2.0"
+	version = "0.3.0"
 	title = "ERPNext Selling"
 	description = "Sales orders, delivery notes, and sales invoices with seasonal demand."
 	role = "extender"
@@ -67,6 +68,7 @@ class ErpnextSellingProvider(ScenarioProvider):
 
 	requires_apps = {"erpnext": ">=15.0.0"}
 	requires_capabilities = {COMPANY, ACCOUNTS, ITEMS, WAREHOUSES, CUSTOMERS, PAYMENT_TERMS, STOCK}
+	optional_capabilities = {TAXES}
 	provides_capabilities = {ORDERS, DELIVERIES, INVOICES, RETURNS}
 
 	capabilities = [
@@ -415,6 +417,9 @@ class ErpnextSellingProvider(ScenarioProvider):
 			"payment_terms_template": customer.get("payment_terms"),
 			"items": self._document_lines(lines, warehouse),
 		}
+		taxes = context.optional(TAXES) or {}
+		if taxes.get("sales_template"):
+			payload["taxes_and_charges"] = taxes["sales_template"]
 		# ERPNext v16 introduced a transaction clock field whose default is the
 		# current time. Set it explicitly so regenerating the same scenario does
 		# not depend on wall-clock time; v15 has no such field.
@@ -556,6 +561,7 @@ class ErpnextSellingProvider(ScenarioProvider):
 				"due_date": posting_date,
 				"currency": context.currency,
 				"update_stock": 1,
+				"taxes_and_charges": (context.optional(TAXES) or {}).get("sales_template"),
 				"set_warehouse": warehouse,
 				"items": self._document_lines(lines, warehouse),
 			},

@@ -175,6 +175,25 @@ documents, underlying database rows, storage range, and controller runtime.
 These are planning ranges—not quotas—because ERPNext controllers create child,
 ledger, and stock rows according to the resolved business lifecycle.
 
+### Operational breadth
+
+Everyday and complex depth presets include commercial and accounting controls,
+not just order volume. The generated lifecycle now covers opportunities and
+submitted quotations, customer credit limits, price lists and discounts,
+partial fulfillment, sales returns and credit notes, purchase returns and debit
+notes, payment schedules and ageing, inter-warehouse transfers, bank statement
+matching, and period closing.
+
+Indirect tax is deliberately opt-in through
+`accounting_controls.indirect_tax_rate`. When specified, scenario-owned sales
+and purchase tax templates are applied to transactions. When omitted, Frappe
+Scenario does not guess a country's tax law. Bank reconciliation is derived
+from eligible generated Payment Entries, so a very short scenario may
+legitimately have no statement matches even though the capability is enabled.
+
+Assets, projects, manufacturing, HRMS, and regional compliance remain separate
+future providers; they are not implied by the core trading lifecycle.
+
 ### Inspecting another development site
 
 `bench start` serves the Bench default site. To inspect a different site without
@@ -293,7 +312,8 @@ develop. Each compatibility Bench must test the exact same committed revision.
 
 ## Current boundaries
 
-- Only the smoke-scale HVAC distribution vertical slice is proven end to end.
+- The HVAC distribution lifecycle is proven end to end at smoke scale; medium
+  and large profiles have deterministic volume and resource-planning coverage.
 - OpenAI adapter discovery, encrypted configuration, structured request
   execution, reviewable AI Brief compilation, and human-approved qualitative
   plausibility review are implemented. The grounded tutor is implemented as a

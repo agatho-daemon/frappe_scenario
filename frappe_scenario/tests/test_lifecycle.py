@@ -257,10 +257,59 @@ def test_quick_demo_exceptions_are_real_linked_erpnext_documents(generated):
 	assert partial_deliveries
 
 
+def test_operational_breadth_uses_real_linked_erpnext_documents(generated):
+	import json
+
+	import frappe
+
+	run = frappe.get_doc("Scenario Run", generated["run_id"])
+	capabilities = json.loads(run.published_capabilities or "{}")
+
+	crm = capabilities["erpnext.commercial.crm"]
+	assert crm["opportunities"]
+	assert crm["quotations"]
+	for row in crm["quotations"]:
+		quotation = frappe.db.get_value("Quotation", row["name"], ["docstatus", "opportunity"], as_dict=True)
+		assert quotation.docstatus == 1
+		assert quotation.opportunity == row["opportunity"]
+
+	taxes = capabilities["erpnext.commercial.taxes"]
+	assert taxes["rate"] == 5
+	assert frappe.db.exists("Sales Taxes and Charges Template", taxes["sales_template"])
+	assert frappe.db.exists("Purchase Taxes and Charges Template", taxes["purchase_template"])
+	assert frappe.db.exists("Sales Taxes and Charges", {"parenttype": "Sales Invoice"})
+	assert frappe.db.exists("Purchase Taxes and Charges", {"parenttype": "Purchase Order"})
+
+	purchase_returns = capabilities["erpnext.buying.returns"]
+	assert {entry["doctype"] for entry in purchase_returns} == {
+		"Purchase Invoice",
+		"Purchase Receipt",
+	}
+	assert all(entry["return_against"] for entry in purchase_returns)
+
+	transfers = capabilities["erpnext.commercial.stock_transfers"]
+	assert transfers
+	assert all(frappe.db.get_value("Stock Entry", row["name"], "docstatus") == 1 for row in transfers)
+
+	reconciled = capabilities["erpnext.accounts.bank_reconciliation"]
+	assert all(
+		frappe.db.get_value("Bank Transaction", row["name"], "status") == "Reconciled" for row in reconciled
+	)
+
+	closings = capabilities["erpnext.accounts.period_closing"]
+	assert closings
+	assert all(
+		frappe.db.get_value("Period Closing Voucher", row["name"], "docstatus") == 1 for row in closings
+	)
+
+
 def test_completed_run_exposes_report_ready_outcomes(generated):
 	assert generated["outcomes"]["master_data"]["customers"] > 0
 	assert generated["outcomes"]["selling"]["invoice_count"] > 0
 	assert generated["outcomes"]["selling"]["return_documents"] > 0
+	assert generated["outcomes"]["buying"]["return_documents"] > 0
+	assert generated["outcomes"]["commercial"]["quotations"] > 0
+	assert "reconciled_bank_transactions" in generated["outcomes"]["accounting"]
 	assert generated["outcomes"]["reports"]
 
 
