@@ -78,6 +78,29 @@ def get_approved_plausibility_artifacts(review: str) -> dict[str, Any]:
 	return approved_artifacts(review)
 
 
+@frappe.whitelist(methods=["POST"])
+def ask_scenario_tutor(
+	run_name: str,
+	question: str,
+	provider: str = "openai",
+	model: str | None = None,
+) -> dict[str, Any]:
+	"""Ask a read-only question grounded in one Scenario Run's evidence."""
+	frappe.only_for(ROLE)
+	from frappe_scenario.ai.tutor import ask_tutor
+
+	return ask_tutor(run_name, question, provider=provider, model=model)
+
+
+@frappe.whitelist(methods=["POST"])
+def confirm_tutor_corrections(exchange: str) -> dict[str, Any]:
+	"""Confirm suggestions for audit only; no corrective action is executed."""
+	frappe.only_for(ROLE)
+	from frappe_scenario.ai.tutor import confirm_corrections
+
+	return confirm_corrections(exchange)
+
+
 @frappe.whitelist()
 def describe_ai_adapters() -> dict[str, Any]:
 	"""Return capabilities and safe configuration status, never credentials."""

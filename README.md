@@ -210,6 +210,21 @@ approve or reject the review through the corresponding methods in
 model, and prompt fingerprint, so an identical review is reused without
 another model call.
 
+### Grounded scenario tutor
+
+`frappe_scenario.api.ai.ask_scenario_tutor` accepts a Scenario Run and a
+learning question. Its bounded evidence bundle contains only manifest-owned
+scenario documents, Scenario Events, and metadata for the projected ERPNext
+fields. The structured response must classify every claim as an ERPNext fact,
+scenario fact, or inference, and every claim must cite an evidence identifier
+that was actually supplied. Invented citations are rejected.
+
+Tutor responses are stored as immutable `Scenario Tutor Exchange` records with
+clickable document citations and an evidence fingerprint. The tutor is always
+read-only. It may describe a possible correction, but the response cannot
+execute it. `confirm_tutor_corrections` records explicit human confirmation for
+audit purposes and still executes no action.
+
 ## Tests
 
 Pure tests need no site:
@@ -244,8 +259,8 @@ develop. Each compatibility Bench must test the exact same committed revision.
 - Only the smoke-scale HVAC distribution vertical slice is proven end to end.
 - OpenAI adapter discovery, encrypted configuration, structured request
   execution, reviewable AI Brief compilation, and human-approved qualitative
-  plausibility review are implemented. The grounded-tutor workflow remains a
-  subsequent batch.
+  plausibility review are implemented. The grounded tutor is implemented as a
+  read-only, citation-validated learning workflow.
 - No Crispy Print or other third-party app code is modified or imported.
 - HRMS, manufacturing, projects, assets, lending, regional compliance, and
   broader archetypes remain future providers.

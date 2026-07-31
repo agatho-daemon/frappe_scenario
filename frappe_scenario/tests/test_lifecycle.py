@@ -224,6 +224,88 @@ def test_completed_run_has_a_chronological_story_linked_to_real_documents(genera
 	assert explanation["event"]["cancellation_consequence"]
 
 
+def test_grounded_tutor_cites_real_scenario_evidence_and_remains_read_only(generated, rollback):
+	import json
+
+	import frappe
+
+	from frappe_scenario.ai.executor import AIHTTPResult
+	from frappe_scenario.ai.tutor import ask_tutor, confirm_corrections
+
+	frappe.get_doc(
+		{
+			"doctype": "Scenario AI Provider",
+			"provider": "openai",
+			"enabled": 1,
+			"credential": "tutor-test-secret",
+		}
+	).insert()
+	ledger_before = frappe.db.count("GL Entry")
+	stock_before = frappe.db.count("Stock Ledger Entry")
+
+	def transport(endpoint, body, headers, timeout):
+		request_input = json.loads(body["input"][0]["content"][0]["text"])
+		evidence = request_input["evidence"]["items"]
+		event = next(
+			item for item in evidence if item["kind"] == "scenario" and item["doctype"] == "Scenario Event"
+		)
+		document = next(
+			item
+			for item in evidence
+			if item["kind"] == "scenario" and item["doctype"] not in {"Scenario Run", "Scenario Event"}
+		)
+		metadata = next(item for item in evidence if item["kind"] == "erpnext_metadata")
+		output = {
+			"answer": "This scenario event is linked to a normal ERPNext document.",
+			"claims": [
+				{
+					"kind": "scenario_fact",
+					"text": "The generated event links to this document.",
+					"evidence_ids": [event["id"], document["id"]],
+				},
+				{
+					"kind": "erpnext_fact",
+					"text": "The document behavior comes from its ERPNext metadata.",
+					"evidence_ids": [metadata["id"]],
+				},
+			],
+			"proposed_corrections": [
+				{
+					"target_evidence_id": document["id"],
+					"description": "Review the document before considering any correction.",
+					"requires_confirmation": True,
+				}
+			],
+		}
+		return AIHTTPResult(
+			200,
+			{
+				"id": "resp_tutor_test",
+				"output": [
+					{
+						"type": "message",
+						"content": [{"type": "output_text", "text": json.dumps(output)}],
+					}
+				],
+			},
+		)
+
+	result = ask_tutor(
+		generated["run_id"],
+		"Why does this document exist and what should I inspect?",
+		transport=transport,
+	)
+	assert result["status"] == "Correction Proposed"
+	assert result["read_only"] is True
+	assert result["executed_actions"] == []
+	assert all(citation["name"] for citation in result["citations"])
+	confirmed = confirm_corrections(result["exchange"])
+	assert confirmed["status"] == "Correction Confirmed"
+	assert confirmed["executed_actions"] == []
+	assert frappe.db.count("GL Entry") == ledger_before
+	assert frappe.db.count("Stock Ledger Entry") == stock_before
+
+
 @pytest.mark.parametrize("path_key", ["buying", "selling"])
 def test_novice_can_complete_core_paths_against_real_erpnext_records(generated, path_key):
 	import frappe

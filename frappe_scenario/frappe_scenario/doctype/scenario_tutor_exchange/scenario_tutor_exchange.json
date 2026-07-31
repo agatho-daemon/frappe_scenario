@@ -1,0 +1,204 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-07-31 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "scenario_run",
+  "status",
+  "question",
+  "answer",
+  "section_grounding",
+  "claims",
+  "citations",
+  "proposed_corrections",
+  "evidence_hash",
+  "evidence_bundle",
+  "section_provenance",
+  "provider",
+  "model",
+  "adapter_version",
+  "prompt_version",
+  "provider_response_id",
+  "provider_usage",
+  "answered_on",
+  "section_confirmation",
+  "confirmed_by",
+  "confirmed_on"
+ ],
+ "fields": [
+  {
+   "default": "SCN-TUTOR-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "SCN-TUTOR-.YYYY.-",
+   "set_only_once": 1
+  },
+  {
+   "fieldname": "scenario_run",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scenario Run",
+   "options": "Scenario Run",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Answered\nCorrection Proposed\nCorrection Confirmed",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "question",
+   "fieldtype": "Small Text",
+   "label": "Question",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "answer",
+   "fieldtype": "Text Editor",
+   "label": "Grounded Answer",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_grounding",
+   "fieldtype": "Section Break",
+   "label": "Grounding and Citations"
+  },
+  {
+   "fieldname": "claims",
+   "fieldtype": "Code",
+   "label": "Classified Claims",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "citations",
+   "fieldtype": "Code",
+   "label": "Validated Citations",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "description": "Suggestions only. The tutor never executes these actions.",
+   "fieldname": "proposed_corrections",
+   "fieldtype": "Code",
+   "label": "Proposed Corrections",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "evidence_hash",
+   "fieldtype": "Data",
+   "label": "Evidence Hash",
+   "read_only": 1
+  },
+  {
+   "fieldname": "evidence_bundle",
+   "fieldtype": "Long Text",
+   "label": "Evidence Bundle",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_provenance",
+   "fieldtype": "Section Break",
+   "label": "Provider Provenance"
+  },
+  {
+   "fieldname": "provider",
+   "fieldtype": "Data",
+   "label": "Provider",
+   "read_only": 1
+  },
+  {
+   "fieldname": "model",
+   "fieldtype": "Data",
+   "label": "Model",
+   "read_only": 1
+  },
+  {
+   "fieldname": "adapter_version",
+   "fieldtype": "Data",
+   "label": "Adapter Version",
+   "read_only": 1
+  },
+  {
+   "fieldname": "prompt_version",
+   "fieldtype": "Data",
+   "label": "Prompt Version",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provider_response_id",
+   "fieldtype": "Data",
+   "label": "Provider Response ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provider_usage",
+   "fieldtype": "Code",
+   "label": "Provider Usage",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "answered_on",
+   "fieldtype": "Datetime",
+   "label": "Answered On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_confirmation",
+   "fieldtype": "Section Break",
+   "label": "Corrective Suggestion Confirmation"
+  },
+  {
+   "fieldname": "confirmed_by",
+   "fieldtype": "Link",
+   "label": "Confirmed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "confirmed_on",
+   "fieldtype": "Datetime",
+   "label": "Confirmed On",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Scenario",
+ "name": "Scenario Tutor Exchange",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager"
+  }
+ ],
+ "search_fields": "scenario_run,status,question",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "question",
+ "track_changes": 1
+}
