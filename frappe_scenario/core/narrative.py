@@ -30,7 +30,9 @@ KINDS = (
 		("posting_date",),
 		("journal_entry",),
 	),
-	EventKind("erpnext.buying.purchase_orders", "Purchase Order", "Purchase Order", ("order_date",), ("name",)),
+	EventKind(
+		"erpnext.buying.purchase_orders", "Purchase Order", "Purchase Order", ("order_date",), ("name",)
+	),
 	EventKind(
 		"erpnext.buying.purchase_receipts",
 		"Purchase Receipt",
@@ -292,7 +294,9 @@ def _effects(event_type: str, entry: dict[str, Any]) -> dict[str, str]:
 			"The supplier delivered goods against an approved purchase order.",
 			"Received quantities become available for operations.",
 			"Perpetual inventory updates stock value and stock received but not billed.",
-			"Stock quantity increases; a partial receipt leaves the order open." if partial else "Stock quantity increases for the received lines.",
+			"Stock quantity increases; a partial receipt leaves the order open."
+			if partial
+			else "Stock quantity increases for the received lines.",
 			"Cancellation reverses stock and valuation; dependent purchase invoices must be handled first.",
 		),
 		"Purchase Invoice": (
@@ -313,7 +317,9 @@ def _effects(event_type: str, entry: dict[str, Any]) -> dict[str, str]:
 			"The company fulfilled all or part of a customer's sales order.",
 			"Delivered quantities become billable and customer fulfillment is updated.",
 			"With perpetual inventory, stock asset and cost of goods sold are posted.",
-			"Stock decreases; the order remains open when delivery is partial." if partial else "Stock decreases by the delivered quantities.",
+			"Stock decreases; the order remains open when delivery is partial."
+			if partial
+			else "Stock decreases by the delivered quantities.",
 			"A return reverses the stock movement; downstream invoices must be handled before cancellation.",
 		),
 		"Sales Invoice": (

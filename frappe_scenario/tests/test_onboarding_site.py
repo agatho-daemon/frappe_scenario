@@ -42,3 +42,11 @@ def test_onboarding_singleton_initializes_without_business_data(frappe_site, rol
 	assert initialized.state_version == 1
 	assert json.loads(initialized.last_preflight) == report
 	assert {doctype: frappe.db.count(doctype) for doctype in before} == before
+
+
+def test_builtin_learning_paths_are_synchronized(frappe_site):
+	import frappe
+
+	from frappe_scenario.core.learning_catalog import PATHS
+
+	assert frappe.db.count("Scenario Learning Path", {"enabled": 1}) == len(PATHS)

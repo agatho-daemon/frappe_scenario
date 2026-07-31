@@ -30,6 +30,7 @@ class ScenarioRun(Document):
 		frappe.db.delete("Scenario Validation Result", {"scenario_run": self.name})
 		frappe.db.delete("Scenario Event", {"scenario_run": self.name})
 		frappe.db.delete("Scenario Quality Report", {"scenario_run": self.name})
+		frappe.db.delete("Scenario Learner Progress", {"scenario_run": self.name})
 
 	def _require_valid_json(self) -> None:
 		for fieldname in ("specification", "plan_json", "assumptions", "compatibility"):

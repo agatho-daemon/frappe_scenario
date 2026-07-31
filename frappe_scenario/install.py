@@ -23,6 +23,8 @@ def before_install() -> None:
 
 def after_install() -> None:
 	"""Create the resumable onboarding record without performing setup."""
+	from frappe_scenario.core.learning import sync_learning_paths
 	from frappe_scenario.core.onboarding import ensure_onboarding
 
 	ensure_onboarding()
+	sync_learning_paths()

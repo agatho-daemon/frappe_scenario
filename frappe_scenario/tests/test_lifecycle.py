@@ -22,6 +22,7 @@ from frappe_scenario.core.engine import (
 	plan,
 	validate_run,
 )
+from frappe_scenario.core.learning import learning_home, verify_step
 from frappe_scenario.core.narrative import explain_record
 
 pytestmark = pytest.mark.erpnext_site
@@ -198,6 +199,28 @@ def test_completed_run_has_a_chronological_story_linked_to_real_documents(genera
 	assert explanation["event"]["ledger_effect"]
 	assert explanation["event"]["stock_effect"]
 	assert explanation["event"]["cancellation_consequence"]
+
+
+@pytest.mark.parametrize("path_key", ["buying", "selling"])
+def test_novice_can_complete_core_paths_against_real_erpnext_records(generated, path_key):
+	import frappe
+
+	home = learning_home(generated["run_id"])
+	path = next(path for path in home["paths"] if path["key"] == path_key)
+	missing_steps = set(path["availability"]["missing_steps"])
+	result = None
+	for lesson in path["lessons"]:
+		for step in lesson["steps"]:
+			if f"{lesson['key']}/{step['key']}" in missing_steps:
+				continue
+			result = verify_step(generated["run_id"], path_key, lesson["key"], step["key"])
+			assert result["passed"], result
+
+	assert result
+	progress = frappe.get_doc("Scenario Learner Progress", result["progress"]["name"])
+	assert progress.user == frappe.session.user
+	assert result["progress"]["completed"] == result["progress"]["total"] - len(missing_steps)
+	assert progress.status == ("Completed" if not missing_steps else "In Progress")
 
 
 def test_validation_findings_carry_enough_to_act_on(generated):

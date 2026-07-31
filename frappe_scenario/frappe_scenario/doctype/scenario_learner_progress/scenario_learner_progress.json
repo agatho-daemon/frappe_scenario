@@ -1,0 +1,126 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-07-31 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "scenario_run",
+  "path_key",
+  "path_version",
+  "column_break_user",
+  "user",
+  "status",
+  "current_step",
+  "section_progress",
+  "completed_steps",
+  "started_at",
+  "completed_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "scenario_run",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scenario Run",
+   "options": "Scenario Run",
+   "reqd": 1
+  },
+  {
+   "fieldname": "path_key",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Learning Path",
+   "options": "Scenario Learning Path",
+   "reqd": 1
+  },
+  {
+   "fieldname": "path_version",
+   "fieldtype": "Data",
+   "label": "Path Version",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_user",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Learner",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "default": "Not Started",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Not Started\nIn Progress\nCompleted",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "current_step",
+   "fieldtype": "Data",
+   "label": "Current Step",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_progress",
+   "fieldtype": "Section Break",
+   "label": "Progress"
+  },
+  {
+   "default": "[]",
+   "fieldname": "completed_steps",
+   "fieldtype": "Code",
+   "label": "Completed Steps",
+   "options": "JSON",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "started_at",
+   "fieldtype": "Datetime",
+   "label": "Started At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completed_at",
+   "fieldtype": "Datetime",
+   "label": "Completed At",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Scenario",
+ "name": "Scenario Learner Progress",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "search_fields": "scenario_run,path_key,user,status",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "path_key"
+}

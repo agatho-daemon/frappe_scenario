@@ -4,6 +4,11 @@ frappe.ui.form.on("Scenario Run", {
 			frm.add_custom_button(__("Open Business Story"), () => {
 				frappe.set_route("scenario-story", { run: frm.doc.name });
 			});
+			if (frm.doc.status === "Completed") {
+				frm.add_custom_button(__("Start Learning"), () => {
+					frappe.set_route("scenario-learning", { run: frm.doc.name });
+				});
+			}
 		}
 	},
 });

@@ -80,13 +80,17 @@ def test_initial_state_comes_only_from_preflight(report, expected):
 	assert onboarding.initial_state(report) == expected
 
 
-def test_after_install_only_ensures_onboarding(monkeypatch):
+def test_after_install_ensures_onboarding_and_learning_catalog(monkeypatch):
 	calls = []
 	monkeypatch.setattr(onboarding, "ensure_onboarding", lambda: calls.append("ensure"))
+	monkeypatch.setattr(
+		"frappe_scenario.core.learning.sync_learning_paths",
+		lambda: calls.append("learning"),
+	)
 
 	install.after_install()
 
-	assert calls == ["ensure"]
+	assert calls == ["ensure", "learning"]
 
 
 def test_ensure_onboarding_initializes_once_and_preserves_resumable_state(monkeypatch):

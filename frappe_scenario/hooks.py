@@ -106,6 +106,7 @@ required_apps = ["erpnext"] if _erpnext_checkout.is_dir() else []
 
 before_install = "frappe_scenario.install.before_install"
 after_install = "frappe_scenario.install.after_install"
+after_migrate = "frappe_scenario.core.learning.sync_learning_paths"
 
 # Login
 # -----
