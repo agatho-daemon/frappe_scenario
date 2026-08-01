@@ -105,6 +105,14 @@ be selected until their optional operational providers pass the same lifecycle
 gate. Capability discovery and AI compilation therefore cannot promise an
 archetype that the generation engine does not yet support.
 
+## Learn ERPNext
+
+The learning experience uses normal generated ERPNext documents, Scenario
+Events, progressive paths, evidence-backed explanations, safe checkpoints,
+module resets, and troubleshooting labs. It does not replace ERPNext with a
+simplified parallel model; lessons link directly to the relevant document or
+report and cleanup remains limited to manifest-owned records.
+
 ## Quick start
 
 Scenario commands use the Bench default site configured by `bench use`.
@@ -351,6 +359,29 @@ validation failure, and `50` blocked cleanup. Click reserves exit code `2` for
 command-line usage errors. The same envelopes are available to System Managers
 through `developer_specification` and `automate_developer` in
 `frappe_scenario.api.runs`.
+
+## Release audit
+
+Before tagging a revision, run the read-only release audit on every supported
+site and test the same signed Git commit in each Bench:
+
+```bash
+bench --site <site> scenario release-audit
+bench --site <site> scenario release-audit --json
+```
+
+The audit checks source packaging boundaries, versioned schema metadata,
+System Manager-only DocType permissions, encrypted credential metadata,
+migration structure, installed applications, synchronized DocTypes,
+compatibility adapters, documentation, and the disposable-site safety posture.
+It never returns credentials or reads their values. A blocked audit exits with
+status `60`.
+
+The release matrix consists of the pure, `frappe_site`, and `erpnext_site`
+tiers on v15, v16, and current develop, followed by `bench migrate`, an
+uninstall/reinstall cycle on a clean disposable acceptance site, artifact
+inspection, and this audit. Local `SCENARIO_PLAN.md` and `DECISIONS.md` files
+must remain ignored and absent from wheels and source distributions.
 
 ## Tests
 

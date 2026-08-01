@@ -726,6 +726,35 @@ def developer_command(
 		raise click.exceptions.Exit(exit_code)
 
 
+@scenario.command("release-audit")
+@click.option("--json", "as_json", is_flag=True, help="Emit the full machine-readable audit.")
+@pass_context
+def release_audit_command(context: Any, as_json: bool) -> None:
+	"""Run read-only source, security, schema, compatibility, and site gates."""
+	with _site(context):
+		from frappe_scenario.core.release import site_audit
+
+		payload = site_audit()
+
+	if as_json:
+		click.echo(json.dumps(payload, indent="\t", sort_keys=True, default=str))
+	else:
+		colour = "green" if payload["ready"] else "red"
+		click.echo(
+			click.style(
+				f"Release audit: {'READY' if payload['ready'] else 'BLOCKED'} "
+				f"({payload['counts']['passed']} passed, {payload['counts']['failed']} failed)",
+				fg=colour,
+				bold=True,
+			)
+		)
+		for entry in payload["checks"]:
+			marker = "ok" if entry["status"] == "passed" else "FAILED"
+			click.echo(f"  {marker:6} {entry['id']}: {entry['message']}")
+	if payload["exit_code"]:
+		raise click.exceptions.Exit(payload["exit_code"])
+
+
 # -- helpers -------------------------------------------------------------------
 def _resolve_specification_file(value: str) -> str:
 	"""Resolve a specification against either the process CWD or Bench root."""
