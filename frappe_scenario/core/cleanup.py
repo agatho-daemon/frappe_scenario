@@ -105,6 +105,10 @@ def _linked_documents(doctype: str, name: str) -> list[dict[str, str]]:
 		return links
 
 	for linked_doctype, documents in (linked or {}).items():
+		# Frappe v16 wraps permitted rows and their hidden count, while v15
+		# returns the row list directly.
+		if isinstance(documents, dict) and "docs" in documents:
+			documents = documents.get("docs") or []
 		for document in documents or []:
 			linked_name = document.get("name") if isinstance(document, dict) else document
 			if not linked_name:

@@ -974,6 +974,12 @@ def cleanup_run(run_name: str, *, allow_non_disposable: bool = False) -> dict[st
 
 	# Reverse dependency order: the last provider to write is the first to clean.
 	for provider in reversed(graph.order):
+		# A live worker can finish a cancellation-generated valuation repost after
+		# the initial sweep. Recheck before each provider so late bookkeeping cannot
+		# pin an owned Item, Warehouse, voucher, or Company farther down the graph.
+		late_deferred_blockers = discard_owned_deferred_work(list(manifest))
+		if late_deferred_blockers:
+			blockers.extend(late_deferred_blockers)
 		records = manifest.for_provider(provider.id)
 		if not records:
 			continue
