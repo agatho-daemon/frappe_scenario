@@ -442,7 +442,9 @@ class ErpnextBuyingProvider(ScenarioProvider):
 		doc = make_purchase_invoice(receipt["name"])
 		adapter.set_posting_datetime(doc, invoice_date, POSTING_TIME)
 		doc.bill_no = f"INV-{receipt['name']}"
-		doc.bill_date = invoice_date
+		# Develop's runtime type validation now enforces the public ERPNext
+		# annotation (``str | None``) at this controller boundary.
+		doc.bill_date = invoice_date.isoformat()
 		# The due date is left to ERPNext. The supplier carries a payment terms
 		# template, and ERPNext rejects any due date later than the one that
 		# template implies, so recomputing it here could only drift out of range.
