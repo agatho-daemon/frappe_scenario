@@ -47,9 +47,16 @@ def frappe_site() -> str:
 	frappe.init(site=site, sites_path=str(SITES_PATH))
 	frappe.connect()
 	frappe.set_user("Administrator")
+	had_in_test = hasattr(frappe, "in_test")
+	previous_in_test = getattr(frappe, "in_test", False)
+	frappe.in_test = True
 	try:
 		yield site
 	finally:
+		if had_in_test:
+			frappe.in_test = previous_in_test
+		else:
+			delattr(frappe, "in_test")
 		frappe.db.rollback()
 		frappe.destroy()
 		os.chdir(previous_cwd)
