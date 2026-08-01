@@ -349,6 +349,16 @@
 				"type": "object"
 			}
 		},
+		"provider_selection": {
+			"type": "array",
+			"description": "Explicit provider roots for developer datasets; dependencies are included automatically.",
+			"minItems": 1,
+			"uniqueItems": true,
+			"items": {
+				"type": "string",
+				"pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+			}
+		},
 		"validation": {
 			"type": "object",
 			"additionalProperties": false,

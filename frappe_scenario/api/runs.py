@@ -128,6 +128,39 @@ def export_presentation(run_name: str) -> dict[str, Any]:
 
 
 @frappe.whitelist()
+def developer_specification(
+	specification: str | dict[str, Any], overrides: str | dict[str, Any] | None = None
+) -> dict[str, Any]:
+	"""Compile explicit developer overrides through the same safe schema boundary."""
+	from frappe_scenario.core.developer import compile_developer_specification
+	from frappe_scenario.core.discovery import discover_providers
+
+	frappe.only_for(ROLE)
+	options = frappe.parse_json(overrides) if isinstance(overrides, str) else dict(overrides or {})
+	options["available_providers"] = {provider.id for provider in discover_providers().providers}
+	return compile_developer_specification(specification, **options)
+
+
+@frappe.whitelist()
+def automate_developer(
+	operation: str,
+	target: str | dict[str, Any],
+	allow_non_disposable: bool = False,
+) -> dict[str, Any]:
+	"""Return the same versioned automation envelope used by the Bench CLI."""
+	from frappe_scenario.core.developer import automate
+
+	frappe.only_for(ROLE)
+	allowed = (
+		frappe.parse_json(allow_non_disposable)
+		if isinstance(allow_non_disposable, str)
+		else allow_non_disposable
+	)
+	payload, _exit_code = automate(operation, target, allow_non_disposable=bool(allowed))
+	return payload
+
+
+@frappe.whitelist()
 def propose_repair(run_name: str) -> dict[str, Any]:
 	"""Turn validation failures into concrete, reviewable specification changes.
 

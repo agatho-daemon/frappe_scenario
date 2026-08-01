@@ -313,6 +313,45 @@ read-only. It may describe a possible correction, but the response cannot
 execute it. `confirm_tutor_corrections` records explicit human confirmation for
 audit purposes and still executes no action.
 
+## Developer and CI datasets
+
+`scenario developer` is the noninteractive lifecycle surface. It always emits
+one versioned JSON envelope and never prompts. `plan` and `generate` accept a
+specification path; `validate`, `export`, and `cleanup` accept a Scenario Run
+ID.
+
+```bash
+bench scenario developer plan examples/hvac_kuwait_smoke.json \
+  --seed 20260801 --scale smoke --anchor-date 2026-08-01 \
+  --partial-delivery-ratio 0.5 --return-ratio 0.25 \
+  --provider erpnext.selling --provider erpnext.payments
+
+bench scenario developer generate examples/hvac_kuwait_smoke.json \
+  --seed 20260801 --output /tmp/scenario-generate.json
+bench scenario developer validate SCN-RUN-2026-00001
+bench scenario developer export SCN-RUN-2026-00001 \
+  --output /tmp/scenario-export.json
+bench scenario developer cleanup SCN-RUN-2026-00001
+```
+
+Advanced deterministic overrides use `/json/pointer=JSON`; values are decoded
+as JSON and are never evaluated as code. Validation exclusions are explicit
+and repeatable:
+
+```bash
+bench scenario developer plan examples/hvac_kuwait_smoke.json \
+  --set '/catalog/item_count=75' \
+  --set '/operations/warranty_claims=0.2' \
+  --skip-rule erpnext.payments.overdue_profile
+```
+
+The stable process exit codes are `0` success, `10` invalid specification or
+override, `20` site-safety refusal, `30` generation/execution failure, `40`
+validation failure, and `50` blocked cleanup. Click reserves exit code `2` for
+command-line usage errors. The same envelopes are available to System Managers
+through `developer_specification` and `automate_developer` in
+`frappe_scenario.api.runs`.
+
 ## Tests
 
 Pure tests need no site:

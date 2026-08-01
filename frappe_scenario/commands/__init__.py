@@ -638,6 +638,94 @@ def export_command(context: Any, run_name: str, output: str | None) -> None:
 		click.echo(encoded)
 
 
+# -- developer automation ------------------------------------------------------
+@scenario.command("developer")
+@click.argument("operation", type=click.Choice(["plan", "generate", "validate", "export", "cleanup"]))
+@click.argument("target")
+@click.option("--seed", type=click.IntRange(0, 4294967295), help="Override the deterministic seed.")
+@click.option("--scale", type=click.Choice(["smoke", "small", "medium", "large", "custom"]))
+@click.option("--anchor-date", help="Override the deterministic anchor date (YYYY-MM-DD).")
+@click.option("--provider", "providers", multiple=True, help="Select a provider; repeat as needed.")
+@click.option("--partial-delivery-ratio", type=click.FloatRange(0, 1))
+@click.option("--return-ratio", type=click.FloatRange(0, 1))
+@click.option("--overdue-ratio", type=click.FloatRange(0, 1))
+@click.option("--skip-rule", "skip_rules", multiple=True, help="Skip a validation rule; repeat as needed.")
+@click.option(
+	"--set",
+	"assignments",
+	multiple=True,
+	help="Set an advanced value with /json/pointer=JSON; repeat as needed.",
+)
+@click.option("--allow-non-disposable", is_flag=True, help="Explicitly bypass the disposable-site guard.")
+@click.option("--output", type=click.Path(dir_okay=False), help="Write the JSON envelope to a file.")
+@pass_context
+def developer_command(
+	context: Any,
+	operation: str,
+	target: str,
+	seed: int | None,
+	scale: str | None,
+	anchor_date: str | None,
+	providers: tuple[str, ...],
+	partial_delivery_ratio: float | None,
+	return_ratio: float | None,
+	overdue_ratio: float | None,
+	skip_rules: tuple[str, ...],
+	assignments: tuple[str, ...],
+	allow_non_disposable: bool,
+	output: str | None,
+) -> None:
+	"""Run a stable, machine-readable developer/CI lifecycle operation.
+
+	TARGET is a specification file for PLAN and GENERATE, and a Scenario Run ID
+	for VALIDATE, EXPORT, and CLEANUP.
+	"""
+	from frappe_scenario.core.developer import (
+		compile_developer_specification,
+		failure_envelope,
+		write_json,
+	)
+	from frappe_scenario.core.errors import ScenarioError
+
+	try:
+		with _site(context):
+			from frappe_scenario.core.developer import automate
+			from frappe_scenario.core.discovery import discover_providers
+			from frappe_scenario.core.specification import read_specification_file
+
+			if operation in {"plan", "generate"}:
+				path = _resolve_specification_file(target)
+				available = {provider.id for provider in discover_providers().providers}
+				target_value: str | dict[str, Any] = compile_developer_specification(
+					read_specification_file(path),
+					seed=seed,
+					scale=scale,
+					anchor_date=anchor_date,
+					providers=list(providers),
+					partial_delivery_ratio=partial_delivery_ratio,
+					return_ratio=return_ratio,
+					overdue_ratio=overdue_ratio,
+					skip_rules=list(skip_rules),
+					sets=list(assignments),
+					available_providers=available,
+				)
+			else:
+				target_value = target
+			payload, exit_code = automate(
+				operation,
+				target_value,
+				allow_non_disposable=allow_non_disposable,
+			)
+	except ScenarioError as error:
+		payload, exit_code = failure_envelope(operation, error)
+
+	encoded = write_json(payload, output)
+	if not output:
+		click.echo(encoded, nl=False)
+	if exit_code:
+		raise click.exceptions.Exit(exit_code)
+
+
 # -- helpers -------------------------------------------------------------------
 def _resolve_specification_file(value: str) -> str:
 	"""Resolve a specification against either the process CWD or Bench root."""

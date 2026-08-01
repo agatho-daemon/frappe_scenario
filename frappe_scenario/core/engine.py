@@ -134,10 +134,17 @@ def plan(specification: str | dict[str, Any], *, allow_non_disposable: bool = Fa
 
 def _requested_providers(resolved: dict[str, Any], registry: Any) -> set[str] | None:
 	"""Providers explicitly named in the specification, or all available ones."""
-	explicit = list((resolved.get("providers") or {}).keys())
+	explicit = list(resolved.get("provider_selection") or (resolved.get("providers") or {}).keys())
 	if not explicit:
 		return None
-	return {provider_id for provider_id in explicit if provider_id in registry} or None
+	unknown = sorted(provider_id for provider_id in explicit if provider_id not in registry)
+	if unknown:
+		raise SpecificationError(
+			"Specification requests providers that are not available.",
+			phase="plan",
+			details={"unknown_providers": unknown},
+		)
+	return set(explicit)
 
 
 def _expected_validation_rules(providers: list[ScenarioProvider]) -> list[str]:
