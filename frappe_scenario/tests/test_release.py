@@ -10,9 +10,18 @@ from pathlib import Path
 import pytest
 
 from frappe_scenario import commands
+from frappe_scenario.compatibility.base import _is_abandoned_repost
 from frappe_scenario.core.release import EXIT_RELEASE_BLOCKED, source_audit
 
 REPOSITORY = Path(__file__).resolve().parents[2]
+
+
+@pytest.mark.pure
+def test_only_logged_in_progress_reposts_are_recoverable():
+	assert _is_abandoned_repost("In Progress", "Queue overloaded")
+	assert not _is_abandoned_repost("In Progress", None)
+	assert not _is_abandoned_repost("Queued", "old error")
+	assert not _is_abandoned_repost("Completed", "old error")
 
 
 @pytest.mark.pure

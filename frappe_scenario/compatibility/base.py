@@ -18,6 +18,11 @@ import frappe
 from frappe_scenario.core.errors import CompatibilityError
 
 
+def _is_abandoned_repost(status: str | None, error_log: str | None) -> bool:
+	"""Return whether ERPNext recorded a completed, recoverable worker attempt."""
+	return status == "In Progress" and bool(error_log)
+
+
 class CompatibilityAdapter:
 	id = "base"
 
@@ -114,7 +119,21 @@ class CompatibilityAdapter:
 			for name in pending:
 				# A live Bench worker may already own an In Progress repost. Calling
 				# repost concurrently would race the same stock ledger rows.
-				if frappe.db.get_value("Repost Item Valuation", name, "status") == "Queued":
+				status, error_log = frappe.db.get_value(
+					"Repost Item Valuation", name, ["status", "error_log"]
+				)
+				# ERPNext records recoverable worker failures as In Progress together
+				# with an error log. No worker still owns that attempt; put it back in
+				# the synchronous drain rather than leaving the site permanently pinned.
+				if _is_abandoned_repost(status, error_log):
+					frappe.db.set_value(
+						"Repost Item Valuation",
+						name,
+						{"status": "Queued", "error_log": None},
+						update_modified=False,
+					)
+					status = "Queued"
+				if status == "Queued":
 					# Newer Frappe enqueues dynamic-link cleanup while the repost removes
 					# its temporary attachment. This synchronous drain must not depend on
 					# queue capacity or a worker, so use Frappe's own immediate test path
