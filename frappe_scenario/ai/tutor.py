@@ -59,13 +59,69 @@ OUTPUT_SCHEMA = {
 }
 
 DOCUMENT_FIELDS = {
-	"Sales Order": ("customer", "transaction_date", "status", "currency", "grand_total", "per_delivered", "per_billed"),
-	"Delivery Note": ("customer", "posting_date", "status", "currency", "grand_total", "per_billed", "is_return"),
-	"Sales Invoice": ("customer", "posting_date", "status", "currency", "grand_total", "outstanding_amount", "is_return"),
-	"Purchase Order": ("supplier", "transaction_date", "status", "currency", "grand_total", "per_received", "per_billed"),
-	"Purchase Receipt": ("supplier", "posting_date", "status", "currency", "grand_total", "per_billed", "is_return"),
-	"Purchase Invoice": ("supplier", "posting_date", "status", "currency", "grand_total", "outstanding_amount", "is_return"),
-	"Payment Entry": ("payment_type", "party_type", "party", "posting_date", "paid_amount", "received_amount", "status"),
+	"Sales Order": (
+		"customer",
+		"transaction_date",
+		"status",
+		"currency",
+		"grand_total",
+		"per_delivered",
+		"per_billed",
+	),
+	"Delivery Note": (
+		"customer",
+		"posting_date",
+		"status",
+		"currency",
+		"grand_total",
+		"per_billed",
+		"is_return",
+	),
+	"Sales Invoice": (
+		"customer",
+		"posting_date",
+		"status",
+		"currency",
+		"grand_total",
+		"outstanding_amount",
+		"is_return",
+	),
+	"Purchase Order": (
+		"supplier",
+		"transaction_date",
+		"status",
+		"currency",
+		"grand_total",
+		"per_received",
+		"per_billed",
+	),
+	"Purchase Receipt": (
+		"supplier",
+		"posting_date",
+		"status",
+		"currency",
+		"grand_total",
+		"per_billed",
+		"is_return",
+	),
+	"Purchase Invoice": (
+		"supplier",
+		"posting_date",
+		"status",
+		"currency",
+		"grand_total",
+		"outstanding_amount",
+		"is_return",
+	),
+	"Payment Entry": (
+		"payment_type",
+		"party_type",
+		"party",
+		"posting_date",
+		"paid_amount",
+		"received_amount",
+		"status",
+	),
 	"Journal Entry": ("voucher_type", "posting_date", "total_debit", "total_credit", "docstatus"),
 	"Stock Entry": ("stock_entry_type", "posting_date", "total_amount", "docstatus"),
 }
@@ -156,7 +212,12 @@ def evidence_bundle(run: Any) -> dict[str, Any]:
 			"doctype": "Scenario Run",
 			"name": run.name,
 			"route": f"/app/scenario-run/{quote(run.name)}",
-			"facts": {"title": run.title, "company": run.company, "status": run.status, "anchor_date": run.anchor_date},
+			"facts": {
+				"title": run.title,
+				"company": run.company,
+				"status": run.status,
+				"anchor_date": run.anchor_date,
+			},
 		}
 	]
 	events = frappe.get_all(
@@ -197,7 +258,9 @@ def evidence_bundle(run: Any) -> dict[str, Any]:
 
 def _document_evidence(doctype: str, name: str) -> list[dict[str, Any]]:
 	meta = frappe.get_meta(doctype)
-	fields = [field for field in DOCUMENT_FIELDS.get(doctype, ()) if meta.has_field(field) or field == "docstatus"]
+	fields = [
+		field for field in DOCUMENT_FIELDS.get(doctype, ()) if meta.has_field(field) or field == "docstatus"
+	]
 	values = frappe.db.get_value(doctype, name, fields, as_dict=True) if fields else {}
 	document_id = f"document:{doctype}:{name}"
 	metadata_id = f"metadata:{doctype}"
@@ -221,7 +284,11 @@ def _document_evidence(doctype: str, name: str) -> list[dict[str, Any]]:
 			"facts": {
 				"is_submittable": bool(meta.is_submittable),
 				"fields": [
-					{"fieldname": field, "label": meta.get_label(field), "fieldtype": meta.get_field(field).fieldtype if meta.get_field(field) else "Int"}
+					{
+						"fieldname": field,
+						"label": meta.get_label(field),
+						"fieldtype": meta.get_field(field).fieldtype if meta.get_field(field) else "Int",
+					}
 					for field in fields
 				],
 			},
@@ -280,9 +347,9 @@ def _parse_output(response: AIHTTPResult, evidence: dict[str, Any]) -> dict[str,
 	if problems:
 		raise AIExecutionError(f"The AI tutor output failed its contract: {problems[0].message}")
 	allowed = {item["id"] for item in evidence["items"]}
-	referenced = {
-		identifier for claim in output["claims"] for identifier in claim["evidence_ids"]
-	} | {item["target_evidence_id"] for item in output["proposed_corrections"]}
+	referenced = {identifier for claim in output["claims"] for identifier in claim["evidence_ids"]} | {
+		item["target_evidence_id"] for item in output["proposed_corrections"]
+	}
 	unknown = sorted(referenced - allowed)
 	if unknown:
 		raise AIExecutionError(f"The AI tutor cited evidence that was not supplied: {unknown}")
@@ -290,7 +357,9 @@ def _parse_output(response: AIHTTPResult, evidence: dict[str, Any]) -> dict[str,
 
 
 def _citations(output: dict[str, Any], evidence: dict[str, Any]) -> list[dict[str, Any]]:
-	ids = list(dict.fromkeys(identifier for claim in output["claims"] for identifier in claim["evidence_ids"]))
+	ids = list(
+		dict.fromkeys(identifier for claim in output["claims"] for identifier in claim["evidence_ids"])
+	)
 	by_id = {item["id"]: item for item in evidence["items"]}
 	return [
 		{key: by_id[identifier].get(key) for key in ("id", "label", "doctype", "name", "route")}
