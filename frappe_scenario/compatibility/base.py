@@ -115,7 +115,16 @@ class CompatibilityAdapter:
 				# A live Bench worker may already own an In Progress repost. Calling
 				# repost concurrently would race the same stock ledger rows.
 				if frappe.db.get_value("Repost Item Valuation", name, "status") == "Queued":
-					repost(frappe.get_doc("Repost Item Valuation", name))
+					# Newer Frappe enqueues dynamic-link cleanup while the repost removes
+					# its temporary attachment. This synchronous drain must not depend on
+					# queue capacity or a worker, so use Frappe's own immediate test path
+					# for the duration of the repost and restore the process flag exactly.
+					was_in_test = frappe.in_test
+					try:
+						frappe.in_test = True
+						repost(frappe.get_doc("Repost Item Valuation", name))
+					finally:
+						frappe.in_test = was_in_test
 			failed = [
 				{"name": name, "status": frappe.db.get_value("Repost Item Valuation", name, "status")}
 				for name in pending
