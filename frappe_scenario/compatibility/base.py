@@ -129,7 +129,8 @@ class CompatibilityAdapter:
 					frappe.db.set_value(
 						"Repost Item Valuation",
 						name,
-						{"status": "Queued", "error_log": None},
+						"status",
+						"Queued",
 						update_modified=False,
 					)
 					status = "Queued"
