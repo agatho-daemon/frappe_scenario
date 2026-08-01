@@ -139,12 +139,16 @@ class CompatibilityAdapter:
 					# its temporary attachment. This synchronous drain must not depend on
 					# queue capacity or a worker, so use Frappe's own immediate test path
 					# for the duration of the repost and restore the process flag exactly.
-					was_in_test = frappe.in_test
+					had_in_test = hasattr(frappe, "in_test")
+					was_in_test = getattr(frappe, "in_test", False)
 					try:
 						frappe.in_test = True
 						repost(frappe.get_doc("Repost Item Valuation", name))
 					finally:
-						frappe.in_test = was_in_test
+						if had_in_test:
+							frappe.in_test = was_in_test
+						else:
+							delattr(frappe, "in_test")
 			failed = [
 				{"name": name, "status": frappe.db.get_value("Repost Item Valuation", name, "status")}
 				for name in pending
