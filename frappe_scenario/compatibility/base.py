@@ -97,6 +97,7 @@ class CompatibilityAdapter:
 		processed: list[str] = []
 		seen: set[str] = set()
 		failed: list[dict[str, Any]] = []
+		terminal_statuses = {"Completed", "Skipped"}
 		# One repost can enqueue or unblock another. Drain the bounded dependency
 		# chain instead of treating an intermediate Queued state as a failure.
 		for _attempt in range(10):
@@ -118,7 +119,7 @@ class CompatibilityAdapter:
 			failed = [
 				{"name": name, "status": frappe.db.get_value("Repost Item Valuation", name, "status")}
 				for name in pending
-				if frappe.db.get_value("Repost Item Valuation", name, "status") != "Completed"
+				if frappe.db.get_value("Repost Item Valuation", name, "status") not in terminal_statuses
 			]
 			if not failed:
 				continue
@@ -127,11 +128,11 @@ class CompatibilityAdapter:
 		processed = sorted(
 			name
 			for name in seen
-			if frappe.db.get_value("Repost Item Valuation", name, "status") == "Completed"
+			if frappe.db.get_value("Repost Item Valuation", name, "status") in terminal_statuses
 		)
 
 		for name in processed:
-			# A completed repost is spent bookkeeping, but it still links to the
+			# A completed or deduplicated repost is spent bookkeeping, but it still links to the
 			# company. Left in place it would block cleanup from removing the very
 			# company whose backdated postings created it. It is a submittable
 			# document, so it has to be cancelled before it can go.

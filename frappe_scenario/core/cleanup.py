@@ -61,7 +61,7 @@ def discard_owned_deferred_work(records: list[ManifestRecord]) -> list[dict[str,
 	for repost in frappe.get_all(
 		"Repost Item Valuation",
 		fields=["name", "based_on", "voucher_type", "voucher_no", "item_code", "warehouse"],
-		filters={"status": ["in", ["Completed", "Failed"]]},
+		filters={"status": ["in", ["Completed", "Skipped", "Failed"]]},
 		limit_page_length=0,
 	):
 		if repost.based_on == "Transaction":
