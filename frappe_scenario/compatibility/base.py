@@ -105,7 +105,10 @@ class CompatibilityAdapter:
 		terminal_statuses = {"Completed", "Skipped"}
 		# One repost can enqueue or unblock another. Drain the bounded dependency
 		# chain instead of treating an intermediate Queued state as a failure.
-		for _attempt in range(10):
+		# Current develop can keep a live worker repost In Progress for several
+		# seconds. Wait up to ten seconds for ownership to return before reporting
+		# a blocker; deleting or reposting concurrently would race stock ledger rows.
+		for _attempt in range(100):
 			pending = frappe.get_all(
 				"Repost Item Valuation",
 				filters={"status": ["in", ["Queued", "In Progress"]]},
