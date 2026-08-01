@@ -193,6 +193,14 @@ class ErpnextPaymentsProvider(ScenarioProvider):
 		context.publish(ACCRUALS, accruals)
 		bank_transactions = self._reconcile_bank(context, accounts, receipts, payments)
 		context.publish(BANK_RECONCILIATION, bank_transactions)
+		# Period Closing Vouchers make every earlier GL posting immutable. Drain
+		# ERPNext's backdated stock valuation work before submitting them, otherwise
+		# the scenario closes its own books before their stock GL can be reconciled.
+		deferred = context.adapter.flush_deferred_work()
+		if deferred.get("processed"):
+			result.warnings.append(
+				f"Ran {len(deferred['processed'])} deferred item valuation reposts before period closing."
+			)
 		closings = self._close_periods(context, company, accounts)
 		context.publish(PERIOD_CLOSING, closings)
 
