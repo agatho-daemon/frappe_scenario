@@ -26,6 +26,7 @@ from frappe_scenario.core.learning_catalog import (
 	lesson_versions,
 	step_contract,
 )
+from frappe_scenario.core.learning_verifiers import VERIFIERS, verify_named
 
 PATH_DOCTYPE = "Scenario Learning Path"
 PROGRESS_DOCTYPE = "Scenario Learner Progress"
@@ -88,7 +89,7 @@ def _sync_lessons(path: dict[str, Any]) -> None:
 					"title": step["title"],
 					"binding": contract["binding"],
 					"fieldname": contract["fieldname"],
-					"verifier": step["verifier"],
+					"verifier": contract["verifier"],
 					"configuration": json.dumps(step["configuration"], sort_keys=True),
 				},
 			)
@@ -161,8 +162,13 @@ def verify_step(
 			"progress": _progress_payload(progress, path),
 		}
 
-	verifier = VERIFIERS[step["verifier"]]
-	evidence = verifier(run, step["configuration"])
+	contract = step_contract(step)
+	evidence = verify_named(
+		run,
+		verifier=contract["verifier"],
+		binding=contract["binding"],
+		configuration=step["configuration"],
+	)
 	if not evidence["passed"]:
 		return {**evidence, "progress": _progress_payload(progress, path)}
 
@@ -421,17 +427,3 @@ def _failed(message: str, **evidence: Any) -> dict[str, Any]:
 
 def _document_route(doctype: str, name: str) -> str:
 	return f"/app/{frappe.scrub(doctype).replace('_', '-')}/{quote(str(name))}"
-
-
-VERIFIERS: dict[str, Callable[[Any, dict[str, Any]], dict[str, Any]]] = {
-	"company_exists": _company_exists,
-	"company_accounts_exist": _company_accounts_exist,
-	"event_document_submitted": _event_document_submitted,
-	"capability_nonempty": _capability_nonempty,
-	"party_links_exist": _party_links_exist,
-	"report_available": _report_available,
-	"run_validation_passed": _run_validation_passed,
-	"return_source_exists": _return_source_exists,
-	"fiscal_year_covers_run": _fiscal_year_covers_run,
-	"doctype_available": _doctype_available,
-}

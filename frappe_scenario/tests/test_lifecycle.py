@@ -34,6 +34,7 @@ from frappe_scenario.core.experimentation import (
 from frappe_scenario.core.learning import learning_home, verify_step
 from frappe_scenario.core.learning_bindings import resolve_binding
 from frappe_scenario.core.learning_catalog import CATALOG_VERSION, STEP_TYPES
+from frappe_scenario.core.learning_verifiers import VERIFIERS, verify_named
 from frappe_scenario.core.narrative import explain_record
 from frappe_scenario.core.scale import get_scale_profile
 from frappe_scenario.core.troubleshooting import (
@@ -523,6 +524,46 @@ def test_interactive_selling_tutorial_resumes_and_verifies_all_ten_steps(generat
 	assert completed["completed"]
 	assert completed["step"] is None
 	assert completed["progress"]["completed"] == 10
+
+
+def test_named_verifiers_use_scenario_bindings_and_real_erpnext_state(generated):
+	import frappe
+
+	run = frappe.get_doc("Scenario Run", generated["run_id"])
+	checks = [
+		("document.exists", "event:sales_order:first", {}),
+		("document.submitted", "event:sales_invoice:first", {}),
+		("field.equals", "event:sales_invoice:first", {"fieldname": "company", "expected": run.company}),
+		("child_table.has_rows", "event:sales_invoice:first", {"fieldname": "items"}),
+		("link.references", "event:sales_invoice:first", {"fieldname": "customer"}),
+		("invoice.outstanding_reduced", "event:sales_invoice:first", {}),
+		("stock.quantity_changed", "event:delivery_note:first", {}),
+		("ledger.voucher_balanced", "event:sales_invoice:first", {}),
+		(
+			"report.contains_record",
+			"report:general_ledger",
+			{"record_binding": "event:sales_invoice:first"},
+		),
+	]
+	assert {name for name, _binding, _configuration in checks} <= set(VERIFIERS)
+	for verifier, binding, configuration in checks:
+		result = verify_named(run, verifier=verifier, binding=binding, configuration=configuration)
+		assert result["passed"], (verifier, result)
+
+
+def test_tutorial_routes_continue_using_only_semantic_targets(generated):
+	state = restart_tutorial(generated["run_id"])
+	seen_routes = []
+	for _index in range(10):
+		step = state["step"]
+		assert step["target"]["semantic"]["kind"] in {"document", "doctype_field"}
+		assert "selector" not in step["target"]
+		seen_routes.append(step["target"]["route"])
+		state = advance_tutorial(generated["run_id"])
+	assert state["completed"]
+	assert any("sales-order" in route for route in seen_routes)
+	assert any("delivery-note" in route for route in seen_routes)
+	assert any("sales-invoice" in route for route in seen_routes)
 
 
 def test_normalized_lessons_and_stable_bindings_follow_generated_records(generated):

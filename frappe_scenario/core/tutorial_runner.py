@@ -34,6 +34,15 @@ from frappe_scenario.core.learning_catalog import (
 PATH_KEY = "selling"
 LESSON_KEY = "selling-complete-cycle"
 ALLOWED_ACTIONS = STEP_TYPES
+SEMANTIC_TARGET_KINDS = {
+	"doctype_field",
+	"form_control",
+	"registered_action",
+	"workspace_shortcut",
+	"report",
+	"tutorial_hook",
+	"document",
+}
 
 
 def tutorial_state(run_name: str, *, user: str | None = None) -> dict[str, Any]:
@@ -134,6 +143,7 @@ def _step_payload(
 	if action not in ALLOWED_ACTIONS:
 		raise frappe.ValidationError(_("Unsupported tutorial action."))
 	target = resolve_binding(run, contract["binding"], fieldname=contract["fieldname"])
+	target["semantic"] = _semantic_target(action, target)
 	position = next(
 		index for index, (candidate_id, _candidate) in enumerate(steps, start=1) if candidate_id == step_id
 	)
@@ -146,6 +156,21 @@ def _step_payload(
 		"total": len(steps),
 		"target": target,
 	}
+
+
+def _semantic_target(action: str, target: dict[str, Any]) -> dict[str, Any]:
+	"""Describe intent without exposing client expressions or executable code."""
+	if target.get("fieldname"):
+		return {
+			"kind": "doctype_field",
+			"doctype": target["doctype"],
+			"fieldname": target["fieldname"],
+		}
+	if action in {"save", "submit"}:
+		return {"kind": "form_control", "control": action}
+	if target.get("report"):
+		return {"kind": "report", "report": target["report"]}
+	return {"kind": "document", "doctype": target.get("doctype"), "name": target.get("name")}
 
 
 def _empty_progress(total: int) -> dict[str, Any]:

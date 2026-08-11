@@ -67,6 +67,7 @@ frappe.provide("frappe.scenario_tutorial");
 			this.pointer = { run_name: state.run.name };
 			this.write_pointer();
 			const step = state.step;
+			frappe.scenario_tutorial_compatibility.validate(step.target);
 			this.dialog?.hide();
 			this.dialog = new frappe.ui.Dialog({
 				title: __("Order to cash — Step {0} of {1}", [step.position, step.total]),
@@ -102,11 +103,10 @@ frappe.provide("frappe.scenario_tutorial");
 		}
 
 		run_native_field_tour(step) {
+			const field = frappe.scenario_tutorial_compatibility.field(step.target);
 			if (
 				step.action !== "highlight_field" ||
-				!step.target.fieldname ||
-				typeof cur_frm === "undefined" ||
-				!cur_frm ||
+				!field ||
 				cur_frm.doctype !== step.target.doctype ||
 				cur_frm.doc.name !== step.target.name ||
 				!frappe.ui.form.FormTour
@@ -118,7 +118,7 @@ frappe.provide("frappe.scenario_tutorial");
 				steps: [
 					{
 						idx: 1,
-						fieldname: step.target.fieldname,
+						fieldname: field.df.fieldname,
 						title: step.title,
 						description: __(
 							"Inspect this value, then return to the tutorial to verify it."

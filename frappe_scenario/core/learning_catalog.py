@@ -10,7 +10,20 @@ from __future__ import annotations
 
 from typing import Any
 
-CATALOG_VERSION = "1.2"
+CATALOG_VERSION = "1.3"
+
+VERIFIER_ALIASES = {
+	"company_exists": "document.exists",
+	"company_accounts_exist": "scenario.company_accounts_exist",
+	"event_document_submitted": "document.submitted",
+	"capability_nonempty": "document.exists",
+	"party_links_exist": "scenario.party_links_exist",
+	"report_available": "report.available",
+	"run_validation_passed": "scenario.validation_passed",
+	"return_source_exists": "document.return_source_exists",
+	"fiscal_year_covers_run": "scenario.fiscal_year_covers_run",
+	"doctype_available": "doctype.exists",
+}
 
 STEP_TYPES = {
 	"explain",
@@ -76,6 +89,7 @@ def step_contract(step: dict[str, Any]) -> dict[str, Any]:
 		"step_type": step_type,
 		"binding": binding,
 		"fieldname": tutorial.get("fieldname"),
+		"verifier": VERIFIER_ALIASES.get(verifier, verifier),
 	}
 
 

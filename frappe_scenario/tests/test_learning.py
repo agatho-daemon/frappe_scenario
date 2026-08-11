@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import pytest
+from frappe import ValidationError
 
 from frappe_scenario.core.learning import VERIFIERS
 from frappe_scenario.core.learning_catalog import (
@@ -15,7 +16,13 @@ from frappe_scenario.core.learning_catalog import (
 	lesson_versions,
 	step_contract,
 )
-from frappe_scenario.core.tutorial_runner import ALLOWED_ACTIONS, LESSON_KEY, PATH_KEY
+from frappe_scenario.core.learning_verifiers import verify_named
+from frappe_scenario.core.tutorial_runner import (
+	ALLOWED_ACTIONS,
+	LESSON_KEY,
+	PATH_KEY,
+	SEMANTIC_TARGET_KINDS,
+)
 
 pytestmark = pytest.mark.pure
 
@@ -39,7 +46,7 @@ def test_catalog_covers_the_planned_erpnext_learning_spectrum():
 def test_every_step_uses_the_closed_server_verifier_vocabulary():
 	for path in PATHS:
 		for _, step in flatten_steps(path):
-			assert step["verifier"] in VERIFIERS
+			assert step_contract(step)["verifier"] in VERIFIERS
 			serialized = repr(step).lower()
 			assert "eval" not in serialized
 			assert "python" not in serialized
@@ -92,3 +99,40 @@ def test_focused_selling_tutorial_has_ten_safe_scenario_bound_steps():
 	assert {step["configuration"]["tutorial"]["action"] for step in steps} <= ALLOWED_ACTIONS
 	assert all(step_contract(step)["binding"].startswith("event:") for step in steps)
 	assert all("selector" not in repr(step).lower() for step in steps)
+
+
+def test_named_verifier_contract_contains_required_state_checks():
+	assert {
+		"document.exists",
+		"document.submitted",
+		"field.equals",
+		"child_table.has_rows",
+		"link.references",
+		"invoice.outstanding_reduced",
+		"stock.quantity_changed",
+		"ledger.voucher_balanced",
+		"report.contains_record",
+	} <= set(VERIFIERS)
+	assert SEMANTIC_TARGET_KINDS == {
+		"doctype_field",
+		"form_control",
+		"registered_action",
+		"workspace_shortcut",
+		"report",
+		"tutorial_hook",
+		"document",
+	}
+
+
+def test_catalog_contract_cannot_carry_executable_or_client_locator_fields():
+	for path in PATHS:
+		for _, step in flatten_steps(path):
+			configuration = step["configuration"]
+			assert not ({"javascript", "python", "eval", "selector", "css"} & set(configuration))
+			assert "css" not in repr(configuration).lower()
+			assert set(step_contract(step)) == {"step_type", "binding", "fieldname", "verifier"}
+
+
+def test_unknown_verifier_is_rejected_before_binding_resolution():
+	with pytest.raises(ValidationError, match="Unsupported learning verifier"):
+		verify_named(None, verifier="community.module.callable", binding="scenario:run")
