@@ -156,7 +156,12 @@ def _run(run_name: str) -> Any:
 def _progress(run_name: str, path_key: str, user: str, *, create: bool) -> Any | None:
 	name = frappe.db.get_value(
 		PROGRESS_DOCTYPE,
-		{"scenario_run": run_name, "path_key": path_key, "user": user},
+		{
+			"scenario_run": run_name,
+			"path_key": path_key,
+			"path_version": CATALOG_VERSION,
+			"user": user,
+		},
 		"name",
 	)
 	if name:

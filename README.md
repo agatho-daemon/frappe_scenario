@@ -113,6 +113,15 @@ module resets, and troubleshooting labs. It does not replace ERPNext with a
 simplified parallel model; lessons link directly to the relevant document or
 report and cleanup remains limited to manifest-owned records.
 
+The Selling path also includes a focused ten-step interactive **Order to cash**
+tutorial. Launch it manually from the Learning page of a completed Scenario
+Run. The runner follows scenario-bound Sales Order, Delivery Note, Sales
+Invoice, and Payment Entry records across Desk routes, uses native Form Tours
+for stable field guidance, and saves progress per learner and catalogue
+version. Exiting never loses the current step; the floating **Resume tutorial**
+button restores it. Completion is awarded only after the server verifies each
+linked ERPNext document.
+
 ## Quick start
 
 Scenario commands use the Bench default site configured by `bench use`.

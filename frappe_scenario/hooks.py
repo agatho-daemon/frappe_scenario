@@ -55,7 +55,7 @@ required_apps = ["erpnext"] if _erpnext_checkout.is_dir() else []
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/frappe_scenario/css/frappe_scenario.css"
-# app_include_js = "/assets/frappe_scenario/js/frappe_scenario.js"
+app_include_js = "/assets/frappe_scenario/js/tutorial_runner.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/frappe_scenario/css/frappe_scenario.css"

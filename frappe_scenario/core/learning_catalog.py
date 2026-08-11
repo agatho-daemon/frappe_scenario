@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-CATALOG_VERSION = "1.0"
+CATALOG_VERSION = "1.1"
 
 
 def _step(key: str, title: str, verifier: str, **configuration: Any) -> dict[str, Any]:
@@ -185,30 +185,92 @@ PATHS: tuple[dict[str, Any], ...] = (
 				"summary": "Trace one linked ERPNext selling lifecycle and its operational and ledger effects.",
 				"steps": [
 					_step(
-						"order",
-						"Inspect the customer's Sales Order.",
+						"orient",
+						"Understand the order-to-cash story you are about to follow.",
 						"event_document_submitted",
 						event_type="Sales Order",
+						tutorial={"action": "explain", "binding": "event:Sales Order"},
 					),
 					_step(
-						"delivery",
-						"Follow fulfillment to a Delivery Note.",
+						"open-order",
+						"Open the customer's submitted Sales Order.",
+						"event_document_submitted",
+						event_type="Sales Order",
+						tutorial={"action": "open_document", "binding": "event:Sales Order"},
+					),
+					_step(
+						"inspect-customer",
+						"Inspect the customer selected on the Sales Order.",
+						"event_document_submitted",
+						event_type="Sales Order",
+						tutorial={
+							"action": "highlight_field",
+							"binding": "event:Sales Order",
+							"fieldname": "customer",
+						},
+					),
+					_step(
+						"inspect-order-items",
+						"Review the products, quantities, rates, and promised delivery dates.",
+						"event_document_submitted",
+						event_type="Sales Order",
+						tutorial={
+							"action": "highlight_field",
+							"binding": "event:Sales Order",
+							"fieldname": "items",
+						},
+					),
+					_step(
+						"open-delivery",
+						"Follow fulfillment to the submitted Delivery Note.",
 						"event_document_submitted",
 						event_type="Delivery Note",
 						glossary="Stock Ledger",
+						tutorial={"action": "open_document", "binding": "event:Delivery Note"},
 					),
 					_step(
-						"invoice",
-						"Inspect the linked Sales Invoice and receivable.",
+						"inspect-warehouse",
+						"See which warehouse supplied the delivered items.",
+						"event_document_submitted",
+						event_type="Delivery Note",
+						tutorial={
+							"action": "highlight_field",
+							"binding": "event:Delivery Note",
+							"fieldname": "items",
+						},
+					),
+					_step(
+						"open-invoice",
+						"Open the linked Sales Invoice and its receivable.",
 						"event_document_submitted",
 						event_type="Sales Invoice",
 						glossary="Receivable",
+						tutorial={"action": "open_document", "binding": "event:Sales Invoice"},
 					),
 					_step(
-						"payment",
-						"Verify a customer Payment Entry reduced an invoice balance.",
+						"inspect-outstanding",
+						"Inspect the invoice total and remaining outstanding amount.",
+						"event_document_submitted",
+						event_type="Sales Invoice",
+						tutorial={
+							"action": "highlight_field",
+							"binding": "event:Sales Invoice",
+							"fieldname": "outstanding_amount",
+						},
+					),
+					_step(
+						"open-payment",
+						"Open the customer Payment Entry allocated to the invoice.",
 						"event_document_submitted",
 						event_type="Customer Payment",
+						tutorial={"action": "open_document", "binding": "event:Customer Payment"},
+					),
+					_step(
+						"verify-collection",
+						"Verify the submitted collection that completes order to cash.",
+						"event_document_submitted",
+						event_type="Customer Payment",
+						tutorial={"action": "verify_document", "binding": "event:Customer Payment"},
 					),
 				],
 			}

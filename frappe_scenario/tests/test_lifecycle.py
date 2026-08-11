@@ -40,6 +40,12 @@ from frappe_scenario.core.troubleshooting import (
 	lab_home,
 	restore_case,
 )
+from frappe_scenario.core.tutorial_runner import (
+	advance_tutorial,
+	exit_tutorial,
+	restart_tutorial,
+	tutorial_state,
+)
 
 pytestmark = pytest.mark.erpnext_site
 
@@ -491,6 +497,30 @@ def test_novice_can_complete_core_paths_against_real_erpnext_records(generated, 
 	assert progress.user == frappe.session.user
 	assert result["progress"]["completed"] == result["progress"]["total"] - len(missing_steps)
 	assert progress.status == ("Completed" if not missing_steps else "In Progress")
+
+
+def test_interactive_selling_tutorial_resumes_and_verifies_all_ten_steps(generated):
+	state = restart_tutorial(generated["run_id"])
+	assert state["active"]
+	assert state["step"]["position"] == 1
+	assert state["step"]["target"]["name"]
+
+	exited = exit_tutorial(generated["run_id"])
+	assert not exited["active"]
+	resumed = tutorial_state(generated["run_id"])
+	assert resumed["active"]
+	assert resumed["step"]["position"] == 1
+
+	for expected_position in range(2, 11):
+		resumed = advance_tutorial(generated["run_id"])
+		assert resumed["passed"], resumed
+		assert resumed["step"]["position"] == expected_position
+
+	completed = advance_tutorial(generated["run_id"])
+	assert completed["passed"]
+	assert completed["completed"]
+	assert completed["step"] is None
+	assert completed["progress"]["completed"] == 10
 
 
 def test_learner_changes_are_visible_and_manifest_scoped_resets_restore_them(generated):

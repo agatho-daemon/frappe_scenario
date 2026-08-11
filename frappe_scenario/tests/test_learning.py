@@ -8,6 +8,7 @@ import pytest
 
 from frappe_scenario.core.learning import VERIFIERS
 from frappe_scenario.core.learning_catalog import GLOSSARY, PATHS, flatten_steps
+from frappe_scenario.core.tutorial_runner import ALLOWED_ACTIONS, LESSON_KEY, PATH_KEY
 
 pytestmark = pytest.mark.pure
 
@@ -59,3 +60,16 @@ def test_buying_and_selling_are_complete_multi_document_paths():
 	}.items():
 		events = {step["configuration"].get("event_type") for _, step in flatten_steps(by_key[path_key])}
 		assert events == expected
+
+
+def test_focused_selling_tutorial_has_ten_safe_scenario_bound_steps():
+	path = next(path for path in PATHS if path["key"] == PATH_KEY)
+	steps = [
+		step
+		for lesson_key, step in flatten_steps(path)
+		if lesson_key == LESSON_KEY and step["configuration"].get("tutorial")
+	]
+	assert len(steps) == 10
+	assert {step["configuration"]["tutorial"]["action"] for step in steps} <= ALLOWED_ACTIONS
+	assert all(step["configuration"]["tutorial"]["binding"].startswith("event:") for step in steps)
+	assert all("selector" not in repr(step).lower() for step in steps)

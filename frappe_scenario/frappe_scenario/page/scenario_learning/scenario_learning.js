@@ -81,6 +81,13 @@ class ScenarioLearning {
 				<div class="lessons"></div>
 				<button class="btn btn-xs btn-default restart-path">${__("Restart progress")}</button>
 				<button class="btn btn-xs btn-default reset-module ml-2">${__("Reset module data")}</button>
+				${
+					path.key === "selling"
+						? `<button class="btn btn-xs btn-primary launch-tutorial ml-2">${__(
+								"Launch interactive tutorial"
+						  )}</button>`
+						: ""
+				}
 			</div>
 		</section>`).appendTo(this.body);
 		const completed = new Set(path.progress.completed_steps || []);
@@ -124,6 +131,9 @@ class ScenarioLearning {
 		});
 		card.find(".restart-path").on("click", () => this.restart(path));
 		card.find(".reset-module").on("click", () => this.reset_module(path));
+		card.find(".launch-tutorial").on("click", () => {
+			frappe.scenario_tutorial?.start(this.run_name);
+		});
 	}
 
 	async reset_exercise(path, lesson) {
