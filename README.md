@@ -122,6 +122,15 @@ version. Exiting never loses the current step; the floating **Resume tutorial**
 button restores it. Completion is awarded only after the server verifies each
 linked ERPNext document.
 
+Learning definitions are also synchronized into versioned `Scenario Lesson`
+records with ordered `Scenario Lesson Step` children. Each step uses a closed
+type vocabulary and a stable scenario binding such as
+`event:sales_invoice:first`, `related:delivery_note`, or `scenario:company`;
+database document names are resolved only when a learner runs the lesson.
+Progress snapshots the exact lesson versions the learner started. The shipped
+Buying and Selling paths each contain ten linked steps and remain valid when a
+scenario is regenerated with different document names.
+
 ## Quick start
 
 Scenario commands use the Bench default site configured by `bench use`.

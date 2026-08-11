@@ -7,7 +7,14 @@ from __future__ import annotations
 import pytest
 
 from frappe_scenario.core.learning import VERIFIERS
-from frappe_scenario.core.learning_catalog import GLOSSARY, PATHS, flatten_steps
+from frappe_scenario.core.learning_catalog import (
+	GLOSSARY,
+	PATHS,
+	STEP_TYPES,
+	flatten_steps,
+	lesson_versions,
+	step_contract,
+)
 from frappe_scenario.core.tutorial_runner import ALLOWED_ACTIONS, LESSON_KEY, PATH_KEY
 
 pytestmark = pytest.mark.pure
@@ -38,6 +45,16 @@ def test_every_step_uses_the_closed_server_verifier_vocabulary():
 			assert "python" not in serialized
 			assert "javascript" not in serialized
 			assert "selector" not in serialized
+			contract = step_contract(step)
+			assert contract["step_type"] in STEP_TYPES
+			assert contract["binding"].split(":", 1)[0] in {
+				"event",
+				"related",
+				"scenario",
+				"capability",
+				"report",
+				"doctype",
+			}
 
 
 def test_progressive_explanations_have_simple_and_advanced_glossary_text():
@@ -60,6 +77,8 @@ def test_buying_and_selling_are_complete_multi_document_paths():
 	}.items():
 		events = {step["configuration"].get("event_type") for _, step in flatten_steps(by_key[path_key])}
 		assert events == expected
+		assert len(flatten_steps(by_key[path_key])) == 10
+		assert lesson_versions(by_key[path_key])
 
 
 def test_focused_selling_tutorial_has_ten_safe_scenario_bound_steps():
@@ -71,5 +90,5 @@ def test_focused_selling_tutorial_has_ten_safe_scenario_bound_steps():
 	]
 	assert len(steps) == 10
 	assert {step["configuration"]["tutorial"]["action"] for step in steps} <= ALLOWED_ACTIONS
-	assert all(step["configuration"]["tutorial"]["binding"].startswith("event:") for step in steps)
+	assert all(step_contract(step)["binding"].startswith("event:") for step in steps)
 	assert all("selector" not in repr(step).lower() for step in steps)

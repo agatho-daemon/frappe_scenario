@@ -15,6 +15,7 @@
   "current_step",
   "section_progress",
   "completed_steps",
+  "lesson_versions",
   "started_at",
   "completed_at"
  ],
@@ -84,6 +85,15 @@
    "fieldname": "completed_steps",
    "fieldtype": "Code",
    "label": "Completed Steps",
+   "options": "JSON",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "{}",
+   "fieldname": "lesson_versions",
+   "fieldtype": "Code",
+   "label": "Lesson Versions",
    "options": "JSON",
    "read_only": 1,
    "reqd": 1

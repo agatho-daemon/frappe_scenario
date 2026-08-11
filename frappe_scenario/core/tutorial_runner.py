@@ -10,7 +10,6 @@ selectors, verifier names, or executable expressions.
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import quote
 
 import frappe
 from frappe import _
@@ -23,11 +22,18 @@ from frappe_scenario.core.learning import (
 	_run,
 	verify_step,
 )
-from frappe_scenario.core.learning_catalog import CATALOG_VERSION, flatten_steps, get_path
+from frappe_scenario.core.learning_bindings import resolve_binding
+from frappe_scenario.core.learning_catalog import (
+	CATALOG_VERSION,
+	STEP_TYPES,
+	flatten_steps,
+	get_path,
+	step_contract,
+)
 
 PATH_KEY = "selling"
 LESSON_KEY = "selling-complete-cycle"
-ALLOWED_ACTIONS = {"explain", "open_document", "highlight_field", "verify_document"}
+ALLOWED_ACTIONS = STEP_TYPES
 
 
 def tutorial_state(run_name: str, *, user: str | None = None) -> dict[str, Any]:
@@ -123,12 +129,14 @@ def _step_payload(
 	step: dict[str, Any],
 	steps: list[tuple[str, dict[str, Any]]],
 ) -> dict[str, Any]:
-	tutorial = step["configuration"]["tutorial"]
-	action = tutorial.get("action")
+	contract = step_contract(step)
+	action = contract["step_type"]
 	if action not in ALLOWED_ACTIONS:
 		raise frappe.ValidationError(_("Unsupported tutorial action."))
-	target = _resolve_binding(run, tutorial.get("binding"), tutorial.get("fieldname"))
-	position = next(index for index, (candidate_id, _candidate) in enumerate(steps, start=1) if candidate_id == step_id)
+	target = resolve_binding(run, contract["binding"], fieldname=contract["fieldname"])
+	position = next(
+		index for index, (candidate_id, _candidate) in enumerate(steps, start=1) if candidate_id == step_id
+	)
 	return {
 		"id": step_id,
 		"key": step["key"],
@@ -137,34 +145,6 @@ def _step_payload(
 		"position": position,
 		"total": len(steps),
 		"target": target,
-	}
-
-
-def _resolve_binding(run: Any, binding: str | None, fieldname: str | None) -> dict[str, Any]:
-	if not binding or not binding.startswith("event:"):
-		raise frappe.ValidationError(_("Unsupported tutorial binding."))
-	event_type = binding.removeprefix("event:")
-	event_name = frappe.db.get_value(
-		"Scenario Event",
-		{"scenario_run": run.name, "event_type": event_type},
-		"name",
-		order_by="sequence asc",
-	)
-	if not event_name:
-		raise frappe.DoesNotExistError(_("The scenario has no {0} event.").format(event_type))
-	event = frappe.get_doc("Scenario Event", event_name)
-	if not frappe.db.exists(event.reference_doctype, event.reference_name):
-		raise frappe.DoesNotExistError(_("The tutorial target no longer exists."))
-	if fieldname and not frappe.get_meta(event.reference_doctype).has_field(fieldname):
-		raise frappe.ValidationError(
-			_("Field {0} is unavailable on {1}.").format(fieldname, event.reference_doctype)
-		)
-	return {
-		"binding": binding,
-		"doctype": event.reference_doctype,
-		"name": event.reference_name,
-		"fieldname": fieldname,
-		"route": f"/app/{frappe.scrub(event.reference_doctype).replace('_', '-')}/{quote(str(event.reference_name))}",
 	}
 
 

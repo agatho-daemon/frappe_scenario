@@ -1,5 +1,3 @@
-/* global cur_frm */
-
 frappe.provide("frappe.scenario_tutorial");
 
 (() => {
@@ -93,7 +91,9 @@ frappe.provide("frappe.scenario_tutorial");
 			});
 			this.dialog.add_custom_action(__("Restart tutorial"), () => {
 				frappe.confirm(
-					__("Restart this tutorial from its first step? Business records are unchanged."),
+					__(
+						"Restart this tutorial from its first step? Business records are unchanged."
+					),
 					() => this.restart(state.run.name)
 				);
 			});
@@ -120,7 +120,9 @@ frappe.provide("frappe.scenario_tutorial");
 						idx: 1,
 						fieldname: step.target.fieldname,
 						title: step.title,
-						description: __("Inspect this value, then return to the tutorial to verify it."),
+						description: __(
+							"Inspect this value, then return to the tutorial to verify it."
+						),
 						position: "Bottom",
 					},
 				],

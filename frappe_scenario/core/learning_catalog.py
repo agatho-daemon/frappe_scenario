@@ -10,11 +10,77 @@ from __future__ import annotations
 
 from typing import Any
 
-CATALOG_VERSION = "1.1"
+CATALOG_VERSION = "1.2"
+
+STEP_TYPES = {
+	"explain",
+	"open_document",
+	"open_report",
+	"highlight_field",
+	"inspect_value",
+	"enter_value",
+	"save",
+	"submit",
+	"follow_link",
+	"verify_document",
+	"verify_report",
+	"answer_question",
+}
 
 
 def _step(key: str, title: str, verifier: str, **configuration: Any) -> dict[str, Any]:
 	return {"key": key, "title": title, "verifier": verifier, "configuration": configuration}
+
+
+def lesson_version(lesson: dict[str, Any]) -> str:
+	return str(lesson.get("version") or CATALOG_VERSION)
+
+
+def lesson_versions(path: dict[str, Any]) -> dict[str, str]:
+	return {lesson["key"]: lesson_version(lesson) for lesson in path["lessons"]}
+
+
+def step_contract(step: dict[str, Any]) -> dict[str, Any]:
+	"""Project a trusted catalogue step into the normalized public contract."""
+	configuration = step["configuration"]
+	tutorial = configuration.get("tutorial") or {}
+	verifier = step["verifier"]
+	step_type = tutorial.get("action") or {
+		"event_document_submitted": "open_document",
+		"capability_nonempty": "open_document",
+		"report_available": "open_report",
+		"run_validation_passed": "verify_report",
+		"doctype_available": "explain",
+	}.get(verifier, "inspect_value")
+	if step_type not in STEP_TYPES:
+		raise ValueError(f"Unsupported step type: {step_type}")
+
+	if event_type := configuration.get("event_type"):
+		binding = f"event:{_binding_key(event_type)}:first"
+	elif capability := configuration.get("capability"):
+		binding = f"capability:{capability}:first"
+	elif report := configuration.get("report"):
+		binding = f"report:{_binding_key(report)}"
+	elif doctype := configuration.get("doctype"):
+		binding = f"doctype:{_binding_key(doctype)}"
+	elif verifier in {"company_exists", "company_accounts_exist", "party_links_exist"}:
+		binding = "scenario:company"
+	elif verifier == "fiscal_year_covers_run":
+		binding = "scenario:fiscal_year"
+	elif verifier == "return_source_exists":
+		binding = "event:return_credit_note:first"
+	else:
+		binding = "scenario:run"
+
+	return {
+		"step_type": step_type,
+		"binding": binding,
+		"fieldname": tutorial.get("fieldname"),
+	}
+
+
+def _binding_key(value: str) -> str:
+	return "_".join(str(value).strip().lower().replace("/", " ").replace("-", " ").split())
 
 
 GLOSSARY = {
@@ -140,34 +206,77 @@ PATHS: tuple[dict[str, Any], ...] = (
 		"lessons": [
 			{
 				"key": "buying-complete-cycle",
+				"version": "1.0",
 				"title": "Purchase to payment",
 				"summary": "Trace one normal ERPNext buying lifecycle using linked submitted documents.",
 				"steps": [
 					_step(
-						"order",
-						"Inspect the Purchase Order commitment.",
+						"orient",
+						"Understand the purchase-to-payment story you are about to follow.",
+						"event_document_submitted",
+						event_type="Purchase Order",
+						tutorial={"action": "explain"},
+					),
+					_step(
+						"open-order",
+						"Open the submitted Purchase Order commitment.",
 						"event_document_submitted",
 						event_type="Purchase Order",
 					),
 					_step(
-						"receipt",
-						"Follow it to the linked Purchase Receipt.",
+						"inspect-supplier",
+						"Inspect the supplier selected on the Purchase Order.",
+						"event_document_submitted",
+						event_type="Purchase Order",
+						tutorial={"action": "highlight_field", "fieldname": "supplier"},
+					),
+					_step(
+						"inspect-order-items",
+						"Review the ordered products, quantities, rates, and required dates.",
+						"event_document_submitted",
+						event_type="Purchase Order",
+						tutorial={"action": "highlight_field", "fieldname": "items"},
+					),
+					_step(
+						"open-receipt",
+						"Follow the order to its submitted Purchase Receipt.",
 						"event_document_submitted",
 						event_type="Purchase Receipt",
 						glossary="Stock Ledger",
 					),
 					_step(
-						"invoice",
-						"Inspect the supplier's Purchase Invoice.",
+						"inspect-received-items",
+						"Inspect the warehouse receipt quantities and values.",
+						"event_document_submitted",
+						event_type="Purchase Receipt",
+						tutorial={"action": "highlight_field", "fieldname": "items"},
+					),
+					_step(
+						"open-invoice",
+						"Open the supplier's submitted Purchase Invoice.",
 						"event_document_submitted",
 						event_type="Purchase Invoice",
 						glossary="Payable",
 					),
 					_step(
-						"payment",
-						"Verify a supplier Payment Entry against its invoice.",
+						"inspect-outstanding",
+						"Inspect the payable and its outstanding amount.",
+						"event_document_submitted",
+						event_type="Purchase Invoice",
+						tutorial={"action": "highlight_field", "fieldname": "outstanding_amount"},
+					),
+					_step(
+						"open-payment",
+						"Open the supplier Payment Entry allocated to the invoice.",
 						"event_document_submitted",
 						event_type="Supplier Payment",
+					),
+					_step(
+						"verify-payment",
+						"Verify the submitted payment that completes purchase to payment.",
+						"event_document_submitted",
+						event_type="Supplier Payment",
+						tutorial={"action": "verify_document"},
 					),
 				],
 			}
@@ -181,6 +290,7 @@ PATHS: tuple[dict[str, Any], ...] = (
 		"lessons": [
 			{
 				"key": "selling-complete-cycle",
+				"version": "1.0",
 				"title": "Order to cash",
 				"summary": "Trace one linked ERPNext selling lifecycle and its operational and ledger effects.",
 				"steps": [
@@ -189,14 +299,14 @@ PATHS: tuple[dict[str, Any], ...] = (
 						"Understand the order-to-cash story you are about to follow.",
 						"event_document_submitted",
 						event_type="Sales Order",
-						tutorial={"action": "explain", "binding": "event:Sales Order"},
+						tutorial={"action": "explain"},
 					),
 					_step(
 						"open-order",
 						"Open the customer's submitted Sales Order.",
 						"event_document_submitted",
 						event_type="Sales Order",
-						tutorial={"action": "open_document", "binding": "event:Sales Order"},
+						tutorial={"action": "open_document"},
 					),
 					_step(
 						"inspect-customer",
@@ -205,7 +315,6 @@ PATHS: tuple[dict[str, Any], ...] = (
 						event_type="Sales Order",
 						tutorial={
 							"action": "highlight_field",
-							"binding": "event:Sales Order",
 							"fieldname": "customer",
 						},
 					),
@@ -216,7 +325,6 @@ PATHS: tuple[dict[str, Any], ...] = (
 						event_type="Sales Order",
 						tutorial={
 							"action": "highlight_field",
-							"binding": "event:Sales Order",
 							"fieldname": "items",
 						},
 					),
@@ -226,7 +334,7 @@ PATHS: tuple[dict[str, Any], ...] = (
 						"event_document_submitted",
 						event_type="Delivery Note",
 						glossary="Stock Ledger",
-						tutorial={"action": "open_document", "binding": "event:Delivery Note"},
+						tutorial={"action": "open_document"},
 					),
 					_step(
 						"inspect-warehouse",
@@ -235,7 +343,6 @@ PATHS: tuple[dict[str, Any], ...] = (
 						event_type="Delivery Note",
 						tutorial={
 							"action": "highlight_field",
-							"binding": "event:Delivery Note",
 							"fieldname": "items",
 						},
 					),
@@ -245,7 +352,7 @@ PATHS: tuple[dict[str, Any], ...] = (
 						"event_document_submitted",
 						event_type="Sales Invoice",
 						glossary="Receivable",
-						tutorial={"action": "open_document", "binding": "event:Sales Invoice"},
+						tutorial={"action": "open_document"},
 					),
 					_step(
 						"inspect-outstanding",
@@ -254,7 +361,6 @@ PATHS: tuple[dict[str, Any], ...] = (
 						event_type="Sales Invoice",
 						tutorial={
 							"action": "highlight_field",
-							"binding": "event:Sales Invoice",
 							"fieldname": "outstanding_amount",
 						},
 					),
@@ -263,14 +369,14 @@ PATHS: tuple[dict[str, Any], ...] = (
 						"Open the customer Payment Entry allocated to the invoice.",
 						"event_document_submitted",
 						event_type="Customer Payment",
-						tutorial={"action": "open_document", "binding": "event:Customer Payment"},
+						tutorial={"action": "open_document"},
 					),
 					_step(
 						"verify-collection",
 						"Verify the submitted collection that completes order to cash.",
 						"event_document_submitted",
 						event_type="Customer Payment",
-						tutorial={"action": "verify_document", "binding": "event:Customer Payment"},
+						tutorial={"action": "verify_document"},
 					),
 				],
 			}

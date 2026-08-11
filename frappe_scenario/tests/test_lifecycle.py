@@ -32,6 +32,8 @@ from frappe_scenario.core.experimentation import (
 	restore_scenario,
 )
 from frappe_scenario.core.learning import learning_home, verify_step
+from frappe_scenario.core.learning_bindings import resolve_binding
+from frappe_scenario.core.learning_catalog import CATALOG_VERSION, STEP_TYPES
 from frappe_scenario.core.narrative import explain_record
 from frappe_scenario.core.scale import get_scale_profile
 from frappe_scenario.core.troubleshooting import (
@@ -521,6 +523,37 @@ def test_interactive_selling_tutorial_resumes_and_verifies_all_ten_steps(generat
 	assert completed["completed"]
 	assert completed["step"] is None
 	assert completed["progress"]["completed"] == 10
+
+
+def test_normalized_lessons_and_stable_bindings_follow_generated_records(generated):
+	import frappe
+
+	run = frappe.get_doc("Scenario Run", generated["run_id"])
+	lesson = frappe.get_doc("Scenario Lesson", "selling-selling-complete-cycle")
+	assert lesson.lesson_version == "1.0"
+	assert len(lesson.steps) == 10
+	assert {step.step_type for step in lesson.steps} <= STEP_TYPES
+	assert all(step.binding and step.verifier for step in lesson.steps)
+
+	assert resolve_binding(run, "event:sales_invoice:first")["doctype"] == "Sales Invoice"
+	assert resolve_binding(run, "related:delivery_note")["doctype"] == "Delivery Note"
+	assert resolve_binding(run, "scenario:company")["name"] == run.company
+	assert resolve_binding(run, "scenario:default_warehouse")["doctype"] == "Warehouse"
+
+	progress_name = frappe.db.get_value(
+		"Scenario Learner Progress",
+		{
+			"scenario_run": run.name,
+			"path_key": "selling",
+			"path_version": CATALOG_VERSION,
+			"user": frappe.session.user,
+		},
+		"name",
+	)
+	progress = frappe.get_doc("Scenario Learner Progress", progress_name)
+	versions = json.loads(progress.lesson_versions)
+	assert progress.path_version == CATALOG_VERSION
+	assert versions == {"selling-complete-cycle": "1.0"}
 
 
 def test_learner_changes_are_visible_and_manifest_scoped_resets_restore_them(generated):

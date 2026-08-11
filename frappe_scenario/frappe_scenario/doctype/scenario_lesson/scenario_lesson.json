@@ -1,0 +1,94 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "format:{learning_path}-{lesson_key}",
+ "creation": "2026-08-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "learning_path",
+  "lesson_key",
+  "lesson_version",
+  "sequence",
+  "enabled",
+  "title",
+  "summary",
+  "steps"
+ ],
+ "fields": [
+  {
+   "fieldname": "learning_path",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Learning Path",
+   "options": "Scenario Learning Path",
+   "reqd": 1
+  },
+  {
+   "fieldname": "lesson_key",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Lesson Key",
+   "reqd": 1
+  },
+  {
+   "fieldname": "lesson_version",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Lesson Version",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "sequence",
+   "fieldtype": "Int",
+   "label": "Sequence",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "summary",
+   "fieldtype": "Small Text",
+   "label": "Summary",
+   "reqd": 1
+  },
+  {
+   "fieldname": "steps",
+   "fieldtype": "Table",
+   "label": "Steps",
+   "options": "Scenario Lesson Step",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Scenario",
+ "name": "Scenario Lesson",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "report": 1,
+   "role": "System Manager"
+  }
+ ],
+ "search_fields": "learning_path,lesson_key,title",
+ "sort_field": "sequence",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "title"
+}

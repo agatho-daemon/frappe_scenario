@@ -22,6 +22,9 @@ from frappe_scenario.core.learning_catalog import (
 	flatten_steps,
 	get_path,
 	get_step,
+	lesson_version,
+	lesson_versions,
+	step_contract,
 )
 
 PATH_DOCTYPE = "Scenario Learning Path"
@@ -50,6 +53,49 @@ def sync_learning_paths() -> None:
 			doc.save(ignore_permissions=True)
 		else:
 			frappe.get_doc({"doctype": PATH_DOCTYPE, **values}).insert(ignore_permissions=True)
+		_sync_lessons(path)
+
+
+def _sync_lessons(path: dict[str, Any]) -> None:
+	if not frappe.db.table_exists("Scenario Lesson"):
+		return
+	for sequence, lesson in enumerate(path["lessons"], start=1):
+		name = frappe.db.get_value(
+			"Scenario Lesson",
+			{"learning_path": path["key"], "lesson_key": lesson["key"]},
+			"name",
+		)
+		doc = frappe.get_doc("Scenario Lesson", name) if name else frappe.new_doc("Scenario Lesson")
+		doc.update(
+			{
+				"learning_path": path["key"],
+				"lesson_key": lesson["key"],
+				"lesson_version": lesson_version(lesson),
+				"sequence": sequence,
+				"enabled": 1,
+				"title": lesson["title"],
+				"summary": lesson["summary"],
+			}
+		)
+		doc.set("steps", [])
+		for step in lesson["steps"]:
+			contract = step_contract(step)
+			doc.append(
+				"steps",
+				{
+					"step_key": step["key"],
+					"step_type": contract["step_type"],
+					"title": step["title"],
+					"binding": contract["binding"],
+					"fieldname": contract["fieldname"],
+					"verifier": step["verifier"],
+					"configuration": json.dumps(step["configuration"], sort_keys=True),
+				},
+			)
+		if name:
+			doc.save(ignore_permissions=True)
+		else:
+			doc.insert(ignore_permissions=True)
 
 
 def learning_home(run_name: str, *, user: str | None = None) -> dict[str, Any]:
@@ -64,6 +110,7 @@ def learning_home(run_name: str, *, user: str | None = None) -> dict[str, Any]:
 		paths.append(
 			{
 				**path,
+				"lessons": [{**lesson, "version": lesson_version(lesson)} for lesson in path["lessons"]],
 				"version": CATALOG_VERSION,
 				"availability": _availability(path, run, capabilities),
 				"progress": {
@@ -177,6 +224,7 @@ def _progress(run_name: str, path_key: str, user: str, *, create: bool) -> Any |
 			"path_version": CATALOG_VERSION,
 			"status": "Not Started",
 			"completed_steps": "[]",
+			"lesson_versions": json.dumps(lesson_versions(get_path(path_key)), sort_keys=True),
 		}
 	).insert(ignore_permissions=True)
 
@@ -193,6 +241,7 @@ def _progress_payload(progress: Any, path: dict[str, Any]) -> dict[str, Any]:
 		"status": progress.status,
 		"completed_steps": completed,
 		"current_step": progress.current_step,
+		"lesson_versions": json.loads(progress.lesson_versions or "{}"),
 		"completed": len(completed),
 		"total": total,
 		"percent": round(len(completed) / total * 100) if total else 100,
