@@ -16,6 +16,12 @@ from frappe_scenario.core.learning_catalog import (
 	lesson_versions,
 	step_contract,
 )
+from frappe_scenario.core.learning_portal import (
+	LEARNER_ROLES,
+	MODULE_DOCTYPES,
+	MODULE_ROLES,
+	PATH_PREREQUISITES,
+)
 from frappe_scenario.core.learning_verifiers import verify_named
 from frappe_scenario.core.tutorial_runner import (
 	ALLOWED_ACTIONS,
@@ -136,3 +142,14 @@ def test_catalog_contract_cannot_carry_executable_or_client_locator_fields():
 def test_unknown_verifier_is_rejected_before_binding_resolution():
 	with pytest.raises(ValidationError, match="Unsupported learning verifier"):
 		verify_named(None, verifier="community.module.callable", binding="scenario:run")
+
+
+def test_learning_roles_are_module_scoped_without_an_assignment_engine():
+	assert "System Manager" in LEARNER_ROLES
+	assert "Sales User" in MODULE_ROLES["Selling"]
+	assert "Purchase User" in MODULE_ROLES["Buying"]
+	assert "Stock User" in MODULE_ROLES["Stock"]
+	assert "Accounts User" in MODULE_ROLES["Accounting"]
+	assert "Sales User" not in MODULE_ROLES["Buying"]
+	assert {"Sales Order", "Delivery Note", "Sales Invoice"} <= MODULE_DOCTYPES["Selling"]
+	assert PATH_PREREQUISITES["returns"] == ("selling",)

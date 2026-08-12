@@ -16,11 +16,7 @@ class ScenarioLearning {
 
 	async load() {
 		if (!this.run_name) {
-			this.body.html(
-				`<div class="alert alert-warning">${__(
-					"Open Learning from a completed Scenario Run."
-				)}</div>`
-			);
+			await this.load_training_home();
 			return;
 		}
 		const response = await frappe.call({
@@ -33,15 +29,109 @@ class ScenarioLearning {
 		this.render();
 	}
 
+	async load_training_home() {
+		const response = await frappe.call({
+			method: "frappe_scenario.api.learning.get_training_home",
+			freeze: true,
+			freeze_message: __("Preparing your training workspace…"),
+		});
+		this.training = response.message;
+		this.render_training_home();
+	}
+
+	render_training_home() {
+		this.page.set_title(__("ERPNext Learning and Training"));
+		this.body.empty();
+		const summary = this.training.summary;
+		$(`<div class="mb-4"><h3>${__("Your learning workspace")}</h3>
+			<p class="text-muted">${__(
+				"Discover realistic ERPNext lessons, resume your work, or review completed learning."
+			)}</p>
+			<div class="row">
+				${this.summary_card(__("Available"), summary.available, "blue")}
+				${this.summary_card(__("In progress"), summary.active, "orange")}
+				${this.summary_card(__("Completed"), summary.completed, "green")}
+				${this.summary_card(__("Assigned"), summary.assigned, "gray")}
+			</div></div>`).appendTo(this.body);
+		if (!this.training.runs.length) {
+			$(
+				`<div class="alert alert-info">${__(
+					"No completed, eligible Scenario Run is available yet. Ask a manager to generate a learning scenario."
+				)}</div>`
+			).appendTo(this.body);
+			return;
+		}
+		this.training.runs.forEach((run) => this.render_training_run(run));
+	}
+
+	summary_card(label, value, color) {
+		return `<div class="col-sm-3 mb-2"><div class="card"><div class="card-body">
+			<span class="indicator-pill ${color}">${frappe.utils.escape_html(label)}</span>
+			<h3 class="mt-2 mb-0">${value}</h3></div></div></div>`;
+	}
+
+	render_training_run(run) {
+		const card = $(`<section class="card mb-3"><div class="card-body">
+			<h4>${frappe.utils.escape_html(run.company || run.title)}</h4>
+			<p class="text-muted">${frappe.utils.escape_html(run.title)} · ${frappe.utils.escape_html(
+			run.archetype || ""
+		)}</p><div class="training-paths"></div></div></section>`).appendTo(this.body);
+		run.paths.forEach((path) => {
+			const eligible = path.eligibility.eligible;
+			const reasons = (path.eligibility.reasons || []).join(" ");
+			const label =
+				path.status === "Completed"
+					? __("Review")
+					: path.status === "In Progress"
+					? __("Resume")
+					: path.assigned
+					? __("Start assignment")
+					: __("Start learning");
+			const row =
+				$(`<div class="border rounded p-3 mb-2 d-flex justify-content-between align-items-center">
+				<div><strong>${frappe.utils.escape_html(path.title)}</strong>
+					<div class="text-muted small">${frappe.utils.escape_html(path.module)} · ${
+					path.percent
+				}% · ${frappe.utils.escape_html(path.status)}</div>${
+					reasons
+						? `<div class="text-danger small">${frappe.utils.escape_html(
+								reasons
+						  )}</div>`
+						: ""
+				}</div>
+				<button class="btn btn-sm ${eligible ? "btn-primary" : "btn-default"}" ${
+					eligible ? "" : "disabled"
+				}>${label}</button>
+			</div>`).appendTo(card.find(".training-paths"));
+			row.find("button").on("click", () => this.open_training_path(run, path));
+		});
+	}
+
+	async open_training_path(run, path) {
+		if (!path.assigned) {
+			await frappe.call({
+				method: "frappe_scenario.api.learning.enroll_learning_path",
+				type: "POST",
+				args: { run_name: run.name, path_key: path.key },
+			});
+		}
+		frappe.set_route("scenario-learning", { run: run.name, path: path.key });
+	}
+
 	render() {
 		this.page.set_title(__("Learn ERPNext: {0}", [this.model.run.company]));
 		this.page.clear_inner_toolbar();
-		this.page.add_inner_button(__("What did I change?"), () => this.show_changes());
-		this.page.add_inner_button(__("Save checkpoint"), () => this.save_checkpoint());
-		this.page.add_inner_button(__("Restore scenario"), () => this.restore_scenario());
-		this.page.add_inner_button(__("Troubleshooting Lab"), () => {
-			frappe.set_route("scenario-troubleshooting", { run: this.run_name });
-		});
+		this.page.add_inner_button(__("All learning"), () =>
+			frappe.set_route("scenario-learning")
+		);
+		if (frappe.user.has_role("System Manager")) {
+			this.page.add_inner_button(__("What did I change?"), () => this.show_changes());
+			this.page.add_inner_button(__("Save checkpoint"), () => this.save_checkpoint());
+			this.page.add_inner_button(__("Restore scenario"), () => this.restore_scenario());
+			this.page.add_inner_button(__("Troubleshooting Lab"), () => {
+				frappe.set_route("scenario-troubleshooting", { run: this.run_name });
+			});
+		}
 		this.body.empty();
 		$(`<div class="mb-4">
 			<h3>${frappe.utils.escape_html(this.model.run.company || this.model.run.title)}</h3>
@@ -80,7 +170,13 @@ class ScenarioLearning {
 				}
 				<div class="lessons"></div>
 				<button class="btn btn-xs btn-default restart-path">${__("Restart progress")}</button>
-				<button class="btn btn-xs btn-default reset-module ml-2">${__("Reset module data")}</button>
+				${
+					frappe.user.has_role("System Manager")
+						? `<button class="btn btn-xs btn-default reset-module ml-2">${__(
+								"Reset module data"
+						  )}</button>`
+						: ""
+				}
 				${
 					path.key === "selling"
 						? `<button class="btn btn-xs btn-primary launch-tutorial ml-2">${__(
@@ -96,9 +192,13 @@ class ScenarioLearning {
 				lesson.title
 			)}</h5>
 				<p class="text-muted">${frappe.utils.escape_html(lesson.summary)}</p><ol class="steps"></ol>
-				<button class="btn btn-xs btn-default reset-exercise">${__(
-					"Reset this exercise"
-				)}</button></div>`).appendTo(card.find(".lessons"));
+				${
+					frappe.user.has_role("System Manager")
+						? `<button class="btn btn-xs btn-default reset-exercise">${__(
+								"Reset this exercise"
+						  )}</button>`
+						: ""
+				}</div>`).appendTo(card.find(".lessons"));
 			lesson_block
 				.find(".reset-exercise")
 				.on("click", () => this.reset_exercise(path, lesson));

@@ -181,6 +181,12 @@ class FakeCache:
 	def hset(self, namespace, key, value):
 		self.values[(namespace, key)] = value
 
+	def get_value(self, key):
+		return self.values.get(key)
+
+	def set_value(self, key, value):
+		self.values[key] = value
+
 
 def _patch_login(monkeypatch, doc, *, roles):
 	cache = FakeCache()
@@ -231,6 +237,21 @@ def test_login_does_not_route_ineligible_or_completed_sessions(monkeypatch, role
 
 	assert cache.values == {}
 	assert doc.saved == 0
+
+
+def test_optional_learning_invitation_is_one_shot_and_never_required_for_discovery(monkeypatch):
+	doc = FakeOnboarding(status=onboarding.READY, initial_route_pending=0)
+	cache = _patch_login(monkeypatch, doc, roles={"Sales User"})
+	monkeypatch.setattr(login_integration.frappe, "conf", {"frappe_scenario_learning_invitation": 1})
+	user = SimpleNamespace(user="learner@example.test")
+
+	login_integration.on_login(user)
+	assert cache.values[("redirect_after_login", user.user)] == "/app/scenario-learning"
+	assert cache.values[f"frappe_scenario:learning_invited:{user.user}"] == 1
+
+	cache.values.pop(("redirect_after_login", user.user))
+	login_integration.on_login(user)
+	assert ("redirect_after_login", user.user) not in cache.values
 
 
 def test_routing_failure_never_blocks_system_manager_login(monkeypatch):

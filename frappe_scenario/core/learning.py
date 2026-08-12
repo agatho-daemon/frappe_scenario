@@ -55,6 +55,28 @@ def sync_learning_paths() -> None:
 		else:
 			frappe.get_doc({"doctype": PATH_DOCTYPE, **values}).insert(ignore_permissions=True)
 		_sync_lessons(path)
+	_sync_learning_page_roles()
+
+
+def _sync_learning_page_roles() -> None:
+	"""Keep an existing standard Page usable after adding learner roles."""
+	if not frappe.db.exists("Page", "scenario-learning"):
+		return
+	roles = [
+		"System Manager",
+		"Accounts User",
+		"Sales User",
+		"Purchase User",
+		"Stock User",
+		"Accounts Manager",
+		"Sales Manager",
+		"Purchase Manager",
+		"Stock Manager",
+	]
+	available = set(frappe.get_all("Role", filters={"name": ["in", roles]}, pluck="name"))
+	page = frappe.get_doc("Page", "scenario-learning")
+	page.set("roles", [{"role": role} for role in roles if role in available])
+	page.save(ignore_permissions=True)
 
 
 def _sync_lessons(path: dict[str, Any]) -> None:
@@ -200,7 +222,10 @@ def restart_path(run_name: str, path_key: str, *, user: str | None = None) -> di
 
 def _run(run_name: str) -> Any:
 	run = frappe.get_doc("Scenario Run", run_name)
-	run.check_permission("read")
+	from frappe_scenario.core.learning_portal import LEARNER_ROLES
+
+	if not set(frappe.get_roles()) & LEARNER_ROLES:
+		raise frappe.PermissionError(_("You do not have an ERPNext learning role."))
 	if run.status != "Completed":
 		frappe.throw(_("Learning requires a completed Scenario Run."), frappe.ValidationError)
 	return run

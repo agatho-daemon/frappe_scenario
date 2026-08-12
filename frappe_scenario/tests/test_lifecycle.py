@@ -34,6 +34,7 @@ from frappe_scenario.core.experimentation import (
 from frappe_scenario.core.learning import learning_home, verify_step
 from frappe_scenario.core.learning_bindings import resolve_binding
 from frappe_scenario.core.learning_catalog import CATALOG_VERSION, STEP_TYPES
+from frappe_scenario.core.learning_portal import enroll, training_home
 from frappe_scenario.core.learning_verifiers import VERIFIERS, verify_named
 from frappe_scenario.core.narrative import explain_record
 from frappe_scenario.core.scale import get_scale_profile
@@ -564,6 +565,23 @@ def test_tutorial_routes_continue_using_only_semantic_targets(generated):
 	assert any("sales-order" in route for route in seen_routes)
 	assert any("delivery-note" in route for route in seen_routes)
 	assert any("sales-invoice" in route for route in seen_routes)
+
+
+def test_training_home_supports_discovery_assignment_resume_and_review(generated):
+	import frappe
+
+	assignment = enroll(generated["run_id"], "selling")
+	home = training_home()
+	run = next(candidate for candidate in home["runs"] if candidate["name"] == generated["run_id"])
+	path = next(candidate for candidate in run["paths"] if candidate["key"] == "selling")
+	assert assignment["progress"]
+	assert path["assigned"]
+	assert path["status"] in {"Not Started", "In Progress", "Completed"}
+	assert path["eligibility"]["eligible"], path["eligibility"]
+	assert home["summary"]["assigned"] >= 1
+	progress = frappe.get_doc("Scenario Learner Progress", assignment["progress"])
+	assert progress.assigned_at
+	assert progress.assigned_by == frappe.session.user
 
 
 def test_normalized_lessons_and_stable_bindings_follow_generated_records(generated):

@@ -113,6 +113,18 @@ module resets, and troubleshooting labs. It does not replace ERPNext with a
 simplified parallel model; lessons link directly to the relevant document or
 report and cleanup remains limited to manifest-owned records.
 
+Open `/app/scenario-learning` directly to use the Learning and Training home;
+it does not depend on an automatic popup or a link from Scenario Run. The home
+shows eligible completed scenarios and groups paths as available, assigned, in
+progress, and completed. Learners with the relevant ERPNext module role can
+self-enrol, resume, restart progress, and review completed lessons. A System
+Manager can assign the same path through the learning API. Eligibility is
+decided on the server from ERPNext installation, scenario and company state,
+module roles, and the exact lesson version. Sites may enable the optional
+one-time first-login invitation with
+`frappe_scenario_learning_invitation = 1`; manual discovery always remains
+available.
+
 The Selling path also includes a focused ten-step interactive **Order to cash**
 tutorial. Launch it manually from the Learning page of a completed Scenario
 Run. The runner follows scenario-bound Sales Order, Delivery Note, Sales

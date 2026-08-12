@@ -16,6 +16,7 @@ def on_login(login_manager: Any | None = None) -> None:
 	"""Route the first System Manager login to incomplete onboarding."""
 	try:
 		_route_on_login(login_manager)
+		_invite_to_learning(login_manager)
 	except Exception:
 		# Onboarding must never lock an administrator out of Desk.
 		try:
@@ -43,3 +44,21 @@ def _route_on_login(login_manager: Any | None = None) -> None:
 	doc.first_routed_user = user
 	doc.first_routed_on = now_datetime()
 	doc.save(ignore_permissions=True)
+
+
+def _invite_to_learning(login_manager: Any | None = None) -> None:
+	"""Optionally route an eligible learner once; manual discovery always remains available."""
+	if not frappe.conf.get("frappe_scenario_learning_invitation"):
+		return
+	user = getattr(login_manager, "user", None) or getattr(frappe.session, "user", None)
+	if not user or user == "Guest":
+		return
+	from frappe_scenario.core.learning_portal import LEARNER_ROLES
+
+	if not set(frappe.get_roles(user)) & LEARNER_ROLES:
+		return
+	key = f"frappe_scenario:learning_invited:{user}"
+	if frappe.cache.get_value(key) or not frappe.db.exists("Scenario Run", {"status": "Completed"}):
+		return
+	frappe.cache.hset("redirect_after_login", user, "/app/scenario-learning")
+	frappe.cache.set_value(key, 1)

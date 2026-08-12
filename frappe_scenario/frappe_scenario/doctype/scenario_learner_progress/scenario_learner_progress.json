@@ -16,6 +16,9 @@
   "section_progress",
   "completed_steps",
   "lesson_versions",
+  "assignment_section",
+  "assigned_by",
+  "assigned_at",
   "started_at",
   "completed_at"
  ],
@@ -97,6 +100,24 @@
    "options": "JSON",
    "read_only": 1,
    "reqd": 1
+  },
+  {
+   "fieldname": "assignment_section",
+   "fieldtype": "Section Break",
+   "label": "Assignment"
+  },
+  {
+   "fieldname": "assigned_by",
+   "fieldtype": "Link",
+   "label": "Assigned By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "assigned_at",
+   "fieldtype": "Datetime",
+   "label": "Assigned At",
+   "read_only": 1
   },
   {
    "fieldname": "started_at",

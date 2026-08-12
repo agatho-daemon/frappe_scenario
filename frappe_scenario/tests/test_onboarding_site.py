@@ -56,3 +56,14 @@ def test_troubleshooting_metadata_is_installed(frappe_site):
 	import frappe
 
 	assert frappe.db.table_exists("Scenario Lab Case")
+
+
+def test_learning_workspace_and_assignment_metadata_are_installed(frappe_site):
+	import frappe
+
+	page = frappe.get_doc("Page", "scenario-learning")
+	roles = {row.role for row in page.roles}
+	assert {"System Manager", "Sales User", "Purchase User", "Stock User", "Accounts User"} <= roles
+	meta = frappe.get_meta("Scenario Learner Progress")
+	assert meta.has_field("assigned_by")
+	assert meta.has_field("assigned_at")
